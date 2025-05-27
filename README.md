@@ -22,7 +22,6 @@ Making local backups of files and directories with encryption and compression. U
 - **Compression**: Backups are compressed to save space.
 - **File Integrity Check**: Each backup includes a checksum to verify file integrity.
 - **Snapshot Management**: Users can view, restore, and delete snapshots.
-- **Configuration**: Users can specify which files and directories to back up, as well as backup frequency and retention policies.
 
 ### Usage
 
@@ -30,8 +29,15 @@ Usage in shell:
 
 ```bash
 
-snapsafe backup <source> --dest <target> --password <passwd>
-snapsafe restore <dest> --snapshot <snapshot_id> --output <target> --password <passwd>
-snapsafe list
-    
+snapsafe backup <source> --dest <target>
+snapsafe restore <dest> --snapshot <snapshot_id> --output <target> 
+snapsafe delete <snapshot_id>
+snapsafe list 
+
 ```
+
+- After each command, the CLI will prompt for a password to encrypt or decrypt the data.
+- The `backup` command creates a new snapshot of the specified source directory.
+- The `restore` command restores files from a specified snapshot to the target directory.
+- The `delete` command removes a specified snapshot.
+- The `list` command displays all available snapshots.
