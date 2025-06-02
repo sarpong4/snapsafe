@@ -13,6 +13,14 @@ pub mod crytpo;
 pub mod gc;
 pub mod snapshot;
 
+pub fn read_password() -> String {
+    if let Ok(pwd) = std::env::var("SNAPSAFE_PASSWORD") {
+        return pwd;
+    }
+
+    prompt_password("Enter password: ").expect("Failed to read password")
+}
+
 pub fn most_recent_json_snapshot(dir: &Path) -> io::Result<Option<String>> {
     let mut newest: Option<(SystemTime, String)> = None;
 
@@ -35,7 +43,6 @@ pub fn most_recent_json_snapshot(dir: &Path) -> io::Result<Option<String>> {
 }
 
 pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
-    println!("Starting backup...");
     let src = Path::new(source);
     let dest = Path::new(target);
 
@@ -52,7 +59,7 @@ pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
         None
     };
 
-    let password = prompt_password("Enter password: ").unwrap();
+    let password = read_password();
     let salt_path = dest.join("key_salt");
     let salt = if salt_path.exists() {
         fs::read(&salt_path)?

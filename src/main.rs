@@ -51,7 +51,6 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Commands::Backup { source, target, } => {
             let _ = actions::backup_file(&source, &target);
-            println!("Backup complete");
             return Ok(());
         },
         Commands::Restore { origin, snapshot_id, target } => {

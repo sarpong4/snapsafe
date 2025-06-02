@@ -21,7 +21,6 @@ pub struct FileEntry {
 
 impl Snapshot {
     pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>) -> io::Result<Self> {
-        println!("Creating snapshot...");
         let mut files = HashMap::<PathBuf, FileEntry>::new();
 
         // get the latest json for this target path.
@@ -36,7 +35,6 @@ impl Snapshot {
             let path = entry.path();
             if path.is_file() {
                 let rel_path = path.strip_prefix(src).unwrap().to_path_buf();
-                println!("Rel path: {:?}", rel_path);
                 let content = fs::read(path)?;
                 let hash = Sha256::digest(&content);
                 
@@ -70,7 +68,6 @@ impl Snapshot {
     }
 
     pub fn save(&self, blobs_dir: &PathBuf, snapshot_dir: &Path) -> io::Result<()> {
-        println!("Saving snapshot...");
         let safe_timestamp = self.timestamp.format("%Y-%m-%dT%H-%M-%S").to_string();
         let file_path = snapshot_dir.join(format!("{safe_timestamp}.json"));
 
