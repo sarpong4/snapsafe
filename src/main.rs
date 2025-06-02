@@ -15,12 +15,14 @@ struct CLI {
 #[derive(Subcommand)]
 enum Commands {
     Backup {
+        #[arg(short = 's', long = "source")]
         source: String,
         #[arg(short = 'd', long = "dest")]
         target: String,
     },
     Restore {
-        dest: String,
+        #[arg(long)]
+        origin: String,
         #[arg(short = 's', long = "snapshot")]
         snapshot_id: u8,
         #[arg(short = 'o', long = "output")]
@@ -43,16 +45,17 @@ fn usage(program: &str) {
     eprintln!("         snapsafe list")
 }
 
-fn entry() -> Result<(), ()> {
+fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CLI::parse();
 
     match cli.command {
         Commands::Backup { source, target, } => {
             let _ = actions::backup_file(&source, &target);
+            println!("Backup complete");
             return Ok(());
         },
-        Commands::Restore { dest, snapshot_id, target } => {
-            actions::restore(&dest, snapshot_id, &target);
+        Commands::Restore { origin, snapshot_id, target } => {
+            actions::restore(&origin, snapshot_id, &target);
             return Ok(());
         },
         Commands::Delete { snapshot_id } => {
@@ -62,10 +65,6 @@ fn entry() -> Result<(), ()> {
         Commands::List { path }=> {
             actions::list(if path.is_empty() { None } else { Some(path) });
             return Ok(());
-        },
-        _ => {
-            usage("snapsafe");
-            return Err(());
         }
     }
 }
@@ -73,6 +72,9 @@ fn entry() -> Result<(), ()> {
 fn main() -> ExitCode {
     match entry() {
         Ok(()) => ExitCode::SUCCESS,
-        Err(()) => ExitCode::FAILURE, 
+        Err(e) => {
+            eprintln!("Error: {e}");
+            ExitCode::FAILURE
+        }
     }
 }

@@ -29,8 +29,8 @@ Usage in shell:
 
 ```bash
 
-snapsafe backup <source> --dest <target>
-snapsafe restore <dest> --snapshot <snapshot_id> --output <target> 
+snapsafe backup --source <source> --dest <target>
+snapsafe restore --origin <origin> --snapshot <snapshot_id> --output <target> 
 snapsafe delete <snapshot_id>
 snapsafe list 
 

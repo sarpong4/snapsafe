@@ -6,14 +6,35 @@
 // if we don't have a record of that file's timestamp, proceed to hashing and back it up, 
 // if timestamp has changed, check for hash changes and either backup or skip
 
-use std::{fs, io, path::Path};
+use std::{fs::{self, metadata}, io, path::Path, time::SystemTime};
 use rpassword::prompt_password;
 
 mod snapshot;
 mod crytpo;
 
+pub fn most_recent_json_snapshot(dir: &Path) -> io::Result<Option<String>> {
+    let mut newest: Option<(SystemTime, String)> = None;
+
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let metadata = entry.metadata()?;
+
+        if metadata.is_file() {
+            if let Ok(modified) = metadata.modified() {
+                let path_str = entry.path().to_string_lossy().to_string();
+                match &newest {
+                    Some((latest_time, _)) if *latest_time >= modified => {},
+                    _ => newest = Some((modified, path_str)),
+                };
+            }
+        }
+    }
+
+    Ok(newest.map(|(_, path)| path))
+}
 
 pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
+    println!("Starting backup...");
     let src = Path::new(source);
     let dest = Path::new(target);
 
@@ -22,6 +43,13 @@ pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
 
     fs::create_dir_all(&blobs_dir)?;
     fs::create_dir_all(&snapshot_dir)?;
+
+    // we need the latest json file if there is any
+    let latest_json = if snapshot_dir.try_exists().unwrap() {
+        most_recent_json_snapshot(&snapshot_dir)?.map(|path| std::path::PathBuf::from(path))
+    } else {
+        None
+    };
 
     let password = prompt_password("Enter password: ").unwrap();
     let salt_path = dest.join("key_salt");
@@ -34,10 +62,11 @@ pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
     };
 
     let key = crytpo::derive_key(&password, &salt);
-    let snap = snapshot::Snapshot::create(src, &blobs_dir, &key)?;
-    snap.save(&snapshot_dir)?;
+    let snap = snapshot::Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref())?;
+    // println!("Snapshot: {:?}", snap);
+    let _ = snap.save(&snapshot_dir)?;
 
-    println!("Backup completed successfully");
+    println!("Backup completed successfully"); // curios why this part does not printout.🤔
 
     Ok(())
 }
