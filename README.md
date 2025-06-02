@@ -14,6 +14,7 @@ Making local backups of files and directories with encryption and compression. U
         - We also can restore to a previous snapshot
 
 - The backup data is encrypted using AES-256. Incidentally, the backup data is also compressed to save space.
+- Backup version history is not perpetual, but rather limited to a certain number of snapshots (e.g., 10). Old snapshots are deleted when the limit is reached. Right now, the limit is set to 3 snapshots. When the CLI `config` feature is implemented, this limit can be adjusted by the user.
 
 ### Features
 

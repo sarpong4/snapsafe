@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::process::ExitCode;
 
-mod actions;
+pub mod actions;
 
 // You can initialize file_to_hash inside a function when needed
 

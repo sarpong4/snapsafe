@@ -5,6 +5,7 @@ use walkdir::WalkDir;
 use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use crate::actions::crytpo;
+use crate::actions::gc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Snapshot {
@@ -45,7 +46,9 @@ impl Snapshot {
                 };
 
                 let _ = match prev_state {
-                    Some(file_entry) if file_entry.hash == format!("{:x}", &hash) => {},
+                    Some(file_entry) if file_entry.hash == format!("{:x}", &hash) => {
+                        files.insert(rel_path, file_entry.clone());
+                    },
                     _ => {
                         let (ciphertext, nonce) = crytpo::encrypt_file_bytes(&content, key);
 
@@ -66,12 +69,18 @@ impl Snapshot {
         )
     }
 
-    pub fn save(&self, snapshots_dir: &Path) -> io::Result<()> {
+    pub fn save(&self, blobs_dir: &PathBuf, snapshot_dir: &Path) -> io::Result<()> {
         println!("Saving snapshot...");
         let safe_timestamp = self.timestamp.format("%Y-%m-%dT%H-%M-%S").to_string();
-        let file_path = snapshots_dir.join(format!("{safe_timestamp}.json"));
+        let file_path = snapshot_dir.join(format!("{safe_timestamp}.json"));
+
+        let mut gc = gc::GarbageCollector::new(blobs_dir.clone(), 3);
         
         if !&self.files.is_empty() {
+            for (file_path, file_entry) in &self.files {
+                gc.register_file(&file_path, &file_entry.hash)?;
+            }
+
             let mut file = fs::File::create(&file_path).expect("Failed to create snapshot file");
             let json = serde_json::to_string_pretty(&self)?;
             file.write_all(json.as_bytes()).unwrap_or_else(|err| {

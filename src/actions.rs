@@ -6,11 +6,12 @@
 // if we don't have a record of that file's timestamp, proceed to hashing and back it up, 
 // if timestamp has changed, check for hash changes and either backup or skip
 
-use std::{fs::{self, metadata}, io, path::Path, time::SystemTime};
+use std::{fs, io, path::Path, time::SystemTime};
 use rpassword::prompt_password;
 
-mod snapshot;
-mod crytpo;
+pub mod crytpo;
+pub mod gc;
+pub mod snapshot;
 
 pub fn most_recent_json_snapshot(dir: &Path) -> io::Result<Option<String>> {
     let mut newest: Option<(SystemTime, String)> = None;
@@ -64,7 +65,7 @@ pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
     let key = crytpo::derive_key(&password, &salt);
     let snap = snapshot::Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref())?;
     // println!("Snapshot: {:?}", snap);
-    let _ = snap.save(&snapshot_dir)?;
+    let _ = snap.save(&blobs_dir, &snapshot_dir)?;
 
     println!("Backup completed successfully"); // curios why this part does not printout.🤔
 
