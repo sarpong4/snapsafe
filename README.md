@@ -1,6 +1,6 @@
-# snapsafe
+# Snapsafe
 
-SnapSafe Challenge: A systems-level tools that enforces fast, secure, and incremental backups with encryption and optional cloud upload. This is a CLI tool that allows users to specify files and directories to back up.
+Snapsafe Challenge: A systems-level tools that enforces fast, secure, and incremental backups with encryption and optional cloud upload. This is a CLI tool that allows users to specify files and directories to back up.
 
 ## Part 1: Local Backup & Restore
 
@@ -31,14 +31,16 @@ Usage in shell:
 ```bash
 
 snapsafe backup --source <source> --dest <target>
-snapsafe restore --origin <origin> --snapshot <snapshot_id> --output <target> 
-snapsafe delete <snapshot_id>
+snapsafe restore --origin <origin> --output <target> 
+snapsafe -n <nth> restore --origin <origin> --output <target>
+snapsafe delete --origin <origin>
+snapsafe delete -n <nth> --origin <origin>
 snapsafe list 
 
 ```
 
 - After each command, the CLI will prompt for a password to encrypt or decrypt the data.
-- The `backup` command creates a new snapshot of the specified source directory.
-- The `restore` command restores files from a specified snapshot to the target directory.
-- The `delete` command removes a specified snapshot.
-- The `list` command displays all available snapshots.
+- The `backup` command creates a new backup of the specified source directory.
+- The `restore` command restores files from a specified snapshot version or the latest snapshot version in a backup directory to the target directory.
+- The `delete` command removes a specified backup or the latest backup.
+- The `list` command displays all available backups.

@@ -6,14 +6,14 @@
 // if we don't have a record of that file's timestamp, proceed to hashing and back it up, 
 // if timestamp has changed, check for hash changes and either backup or skip
 
-use std::{fs, io, path::Path, time::SystemTime};
+use std::{collections::HashMap, fs::{self, File}, io, path::Path};
 use rpassword::prompt_password;
 
-pub mod crytpo;
+pub mod crypto;
 pub mod gc;
 pub mod snapshot;
 
-pub fn read_password() -> String {
+fn read_password() -> String {
     if let Ok(pwd) = std::env::var("SNAPSAFE_PASSWORD") {
         return pwd;
     }
@@ -21,28 +21,40 @@ pub fn read_password() -> String {
     prompt_password("Enter password: ").expect("Failed to read password")
 }
 
-pub fn most_recent_json_snapshot(dir: &Path) -> io::Result<Option<String>> {
-    let mut newest: Option<(SystemTime, String)> = None;
+fn get_nth_recent_json_snapshot(nth: usize, dir: &Path) -> io::Result<Option<String>> {
+    let mut entries: Vec<_> = fs::read_dir(dir)?
+        .filter_map(Result::ok)
+        .filter(|e| {
+            e.path().extension().map(|ext| ext == "json").unwrap_or(false)
+            && e.metadata().map(|m| m.is_file()).unwrap_or(false)
+        })
+        .filter_map(|entry| {
+            entry.metadata().ok().and_then(|meta| {
+                meta.modified().ok().map(|modified| (modified, entry.path()))
+            })
+        }).collect();
 
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let metadata = entry.metadata()?;
+    entries.sort_by(|a, b| b.0.cmp(&a.0));
 
-        if metadata.is_file() {
-            if let Ok(modified) = metadata.modified() {
-                let path_str = entry.path().to_string_lossy().to_string();
-                match &newest {
-                    Some((latest_time, _)) if *latest_time >= modified => {},
-                    _ => newest = Some((modified, path_str)),
-                };
-            }
-        }
-    }
+    Ok(entries.get(nth).map(|(_, path)| path.to_string_lossy().to_string()))
+}
 
-    Ok(newest.map(|(_, path)| path))
+fn get_salt(dir: &Path) -> Vec<u8> {
+    let salt_path = dir.join("key_salt");
+    let salt = if salt_path.exists() {
+        fs::read(&salt_path).expect("Cannot read salt file.")
+    } else {
+        let new_salt: [u8; 16] = rand::random();
+        let _ = fs::write(&salt_path, &new_salt);
+        return new_salt.to_vec()
+    };
+
+    salt
 }
 
 pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
+    let password = read_password();
+
     let src = Path::new(source);
     let dest = Path::new(target);
 
@@ -54,39 +66,75 @@ pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
 
     // we need the latest json file if there is any
     let latest_json = if snapshot_dir.try_exists().unwrap() {
-        most_recent_json_snapshot(&snapshot_dir)?.map(|path| std::path::PathBuf::from(path))
+        get_nth_recent_json_snapshot(0, &snapshot_dir)?.map(|path| std::path::PathBuf::from(path))
     } else {
         None
     };
 
-    let password = read_password();
-    let salt_path = dest.join("key_salt");
-    let salt = if salt_path.exists() {
-        fs::read(&salt_path)?
-    } else {
-        let new_salt: [u8; 16] = rand::random();
-        fs::write(&salt_path, &new_salt)?;
-        new_salt.to_vec()
-    };
-
-    let key = crytpo::derive_key(&password, &salt);
+    let salt = get_salt(&dest);
+    let key = crypto::derive_key(&password, &salt);
     let snap = snapshot::Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref())?;
-    // println!("Snapshot: {:?}", snap);
     let _ = snap.save(&blobs_dir, &snapshot_dir)?;
 
-    println!("Backup completed successfully"); // curios why this part does not printout.🤔
+    println!("Backup completed successfully");
 
     Ok(())
 }
 
-pub fn restore(source: &str, snapshot_id: u8, target: &str) {
-    println!("About to restore: {source}");
-    todo!("restore not implemented");
+pub fn restore(nth: u8, source: &str, target: &str) -> io::Result<()> {
+    let password = read_password();
 
+    let nth = (nth - 1) as usize;
+    let src = Path::new(source);
+    let output_dir = Path::new(target);
+
+    if !output_dir.try_exists().unwrap() {
+        let _ = fs::create_dir_all(&output_dir)?;
+    }
+
+    let salt = get_salt(&src);
+    let key = crypto::derive_key(&password, &salt);
+
+    let blobs_dir = src.join("blobs");
+    let snapshot_dir = src.join("snapshot");
+    
+    let nth_snapshot = if snapshot_dir.try_exists().unwrap() {
+        get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|path| std::path::PathBuf::from(path))
+    } else {
+        None
+    };
+
+    let mut snapshot_files = HashMap::new();
+
+    if let Some(snapshot_path) = nth_snapshot {
+        snapshot_files = snapshot::Snapshot::from_json_to_snapshot(&snapshot_path)?.files;
+    };
+
+    for (path, file_entry) in snapshot_files {
+        let hash_path = blobs_dir.join(&file_entry.hash);
+
+        let ciphertext = fs::read(&hash_path)?;
+        let nonce_bytes = file_entry.nonce;
+
+        let decrytped = crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes);
+
+        let rel_target = output_dir.join(path);
+
+        if !rel_target.exists() {
+            let _ = File::create(&rel_target);
+        }
+        
+        if let Err(err) = fs::write(&rel_target, decrytped) {
+            eprintln!("Could not write to restore file: {err}");
+        }
+    }
+
+    println!("Restore to {target} completed.");
+
+    Ok(())
 }
 
-pub fn delete(snapshot_id: u8) {
-    println!("About to delete snapshot with id: {snapshot_id}");
+pub fn delete(nth: u8, origin: String) {
     todo!("Delete not implemented")
 }
 
@@ -99,8 +147,4 @@ pub fn list(path: Option<String>) {
         Some(file_path) => list_from_defined_path(&file_path),
         None => list_from_defined_path("")
     }
-}
-
-pub fn get_file_path_from_id(snapshot_id: u8) -> String {
-    todo!("Not implemented");
 }

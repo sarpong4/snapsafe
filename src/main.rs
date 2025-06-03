@@ -21,15 +21,18 @@ enum Commands {
         target: String,
     },
     Restore {
+        #[arg(short = 'n', long, required = false)]
+        number: Option<u8>,
         #[arg(long)]
         origin: String,
-        #[arg(short = 's', long = "snapshot")]
-        snapshot_id: u8,
         #[arg(short = 'o', long = "output")]
         target: String,
     },
     Delete{
-        snapshot_id:u8,
+        #[arg(short = 'n', long, required = false)]
+        number: Option<u8>,
+        #[arg(short = 'o', long)]
+        origin: String,
     },
     List {
         #[arg(short = 'p', long, required = false)]
@@ -37,13 +40,13 @@ enum Commands {
     },
 }
 
-fn usage(program: &str) {
-    eprintln!("Usage: {program} [SUBCOMMAND] [OPTIONS]");
-    eprintln!("Subcommands:");
-    eprintln!("         snapsafe backup <source> --dest <target> --password <pwd>");
-    eprintln!("         snapsafe restore <target> --dest <source> --password <pwd>");
-    eprintln!("         snapsafe list")
-}
+// fn usage(program: &str) {
+//     eprintln!("Usage: {program} [SUBCOMMAND] [OPTIONS]");
+//     eprintln!("Subcommands:");
+//     eprintln!("         snapsafe backup <source> --dest <target> --password <pwd>");
+//     eprintln!("         snapsafe restore <target> --dest <source> --password <pwd>");
+//     eprintln!("         snapsafe list")
+// }
 
 fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CLI::parse();
@@ -53,12 +56,21 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
             let _ = actions::backup_file(&source, &target);
             return Ok(());
         },
-        Commands::Restore { origin, snapshot_id, target } => {
-            actions::restore(&origin, snapshot_id, &target);
+        Commands::Restore { number, origin, target } => {
+            if let Some(nth) = number {
+                let _ = actions::restore(nth, &origin, &target);
+            }
+            else {
+                let _ = actions::restore(1, &origin, &target);
+            }
             return Ok(());
         },
-        Commands::Delete { snapshot_id } => {
-            actions::delete(snapshot_id);
+        Commands::Delete { number, origin } => {
+            if let Some(nth) = number {
+                actions::delete(nth, origin);
+            }else {
+                actions::delete(1, origin);
+            }
             return Ok(());
         }
         Commands::List { path }=> {

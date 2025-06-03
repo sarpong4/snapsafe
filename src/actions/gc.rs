@@ -44,7 +44,3 @@ impl GarbageCollector {
         &self.version_index
     }
 }
-
-mod gc_tests {
-    
-}

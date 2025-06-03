@@ -2,9 +2,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
-use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}, time::SystemTime};
 
-use crate::actions::crytpo;
+use crate::actions::crypto;
 use crate::actions::gc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -16,7 +16,8 @@ pub struct Snapshot {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileEntry {
     pub hash: String,
-    pub nonce: [u8; 12]
+    pub nonce: [u8; 12],
+    pub modified: SystemTime
 }
 
 impl Snapshot {
@@ -33,6 +34,8 @@ impl Snapshot {
 
         for entry in WalkDir::new(src).into_iter().filter_map(Result::ok) {
             let path = entry.path();
+            let metadata = entry.metadata()?;
+
             if path.is_file() {
                 let rel_path = path.strip_prefix(src).unwrap().to_path_buf();
                 let content = fs::read(path)?;
@@ -43,12 +46,16 @@ impl Snapshot {
                     None => None
                 };
 
+
                 let _ = match prev_state {
+                    Some(f) if metadata.modified()? == f.modified => {
+                        files.insert(rel_path, f.clone());
+                    }
                     Some(file_entry) if file_entry.hash == format!("{:x}", &hash) => {
                         files.insert(rel_path, file_entry.clone());
                     },
                     _ => {
-                        let (ciphertext, nonce) = crytpo::encrypt_file_bytes(&content, key);
+                        let (ciphertext, nonce) = crypto::encrypt_file_bytes(&content, key);
 
                         let hash_hex = format!("{:x}", hash);
                         let blob_path = target.join(&hash_hex);
@@ -57,7 +64,7 @@ impl Snapshot {
                         fs::write(&blob_path, ciphertext)?;
                         fs::write(&nonce_path, nonce)?;
 
-                        files.insert(rel_path, FileEntry { hash: hash_hex, nonce });
+                        files.insert(rel_path, FileEntry { hash: hash_hex, nonce, modified: SystemTime::now() });
                     }
                 };
             }
