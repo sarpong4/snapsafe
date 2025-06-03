@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit, Nonce};
 use argon2::Argon2;
 
@@ -16,10 +18,11 @@ pub fn encrypt_file_bytes(data: &[u8], key: &[u8]) -> (Vec<u8>, [u8; 12]) {
     (ciphertext, nonce_bytes)
 }
 
-pub fn decrypt_file_bytes(ciphertext: &[u8], key: &[u8], nonce_bytes: &[u8; 12]) -> Vec<u8> {
+pub fn decrypt_file_bytes(ciphertext: &[u8], key: &[u8], nonce_bytes: &[u8; 12]) -> Result<Vec<u8>, Box<dyn Error>> {
     let cipher = Aes256Gcm::new_from_slice(key).unwrap();
     let nonce = Nonce::from_slice(nonce_bytes);
-    cipher.decrypt(nonce, ciphertext).unwrap()
+
+    cipher.decrypt(nonce, ciphertext).map_err(|err| format!("Decryption failed: {err}").into())
 }
 
 #[cfg(test)]
@@ -54,7 +57,7 @@ mod tests {
 
         let key = derive_key(password, salt);
         let (encrypted, nonce) = encrypt_file_bytes(data, &key);
-        let decrypted = decrypt_file_bytes(&encrypted, &key, &nonce);
+        let decrypted = decrypt_file_bytes(&encrypted, &key, &nonce).unwrap_or(Vec::new());
         assert_eq!(decrypted, data);
     }
 

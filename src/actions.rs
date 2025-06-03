@@ -6,7 +6,7 @@
 // if we don't have a record of that file's timestamp, proceed to hashing and back it up, 
 // if timestamp has changed, check for hash changes and either backup or skip
 
-use std::{collections::HashMap, fs::{self, File}, io, path::Path};
+use std::{collections::HashMap, fs, io, path::Path};
 use rpassword::prompt_password;
 
 pub mod crypto;
@@ -88,7 +88,7 @@ pub fn restore(nth: u8, source: &str, target: &str) -> io::Result<()> {
     let src = Path::new(source);
     let output_dir = Path::new(target);
 
-    if !output_dir.try_exists().unwrap() {
+    if !output_dir.try_exists().unwrap_or(false) {
         let _ = fs::create_dir_all(&output_dir)?;
     }
 
@@ -116,16 +116,21 @@ pub fn restore(nth: u8, source: &str, target: &str) -> io::Result<()> {
         let ciphertext = fs::read(&hash_path)?;
         let nonce_bytes = file_entry.nonce;
 
-        let decrytped = crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes);
+        match crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes) {
+            Ok(decrytped) => {
+                let rel_target = output_dir.join(path);
 
-        let rel_target = output_dir.join(path);
-
-        if !rel_target.exists() {
-            let _ = File::create(&rel_target);
-        }
-        
-        if let Err(err) = fs::write(&rel_target, decrytped) {
-            eprintln!("Could not write to restore file: {err}");
+                if let Some(parent) = rel_target.parent() {
+                    let _ = fs::create_dir_all(parent)?;
+                }
+                
+                if let Err(err) = fs::write(&rel_target, &decrytped) {
+                    eprintln!("Could not write to restore file: {err}");
+                }
+            },
+            Err(err) => {
+                eprintln!("[ERROR] Failed to decrypt file {:?} : {err}", path);
+            }
         }
     }
 
