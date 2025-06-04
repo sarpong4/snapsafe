@@ -15,23 +15,23 @@ struct CLI {
 #[derive(Subcommand)]
 enum Commands {
     Backup {
-        #[arg(short = 's', long = "source")]
+        #[arg(short = 's', long = "source", required = true)]
         source: String,
-        #[arg(short = 'd', long = "dest")]
+        #[arg(short = 'd', long = "dest", required = true)]
         target: String,
     },
     Restore {
         #[arg(short = 'n', long, required = false)]
         number: Option<u8>,
-        #[arg(long)]
+        #[arg(long, required = true)]
         origin: String,
-        #[arg(short = 'o', long = "output")]
+        #[arg(short = 'o', long = "output", required = true)]
         target: String,
     },
     Delete{
         #[arg(short = 'n', long, required = false)]
         number: Option<u8>,
-        #[arg(short = 'o', long)]
+        #[arg(short = 'o', long, required = true)]
         origin: String,
     },
     List {
@@ -57,20 +57,19 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         },
         Commands::Restore { number, origin, target } => {
-            if let Some(nth) = number {
-                let _ = actions::restore(nth, &origin, &target);
-            }
-            else {
-                let _ = actions::restore(1, &origin, &target);
+            let restore_return = actions::restore(
+                number.unwrap_or(1),
+                &origin, 
+                &target
+            );
+
+            if let Err(err) = restore_return {
+                return Err(Box::new(err))
             }
             return Ok(());
         },
         Commands::Delete { number, origin } => {
-            if let Some(nth) = number {
-                actions::delete(nth, origin);
-            }else {
-                actions::delete(1, origin);
-            }
+            let _delete_return = actions::delete(number.unwrap_or(1), origin);
             return Ok(());
         }
         Commands::List { path }=> {

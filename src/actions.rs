@@ -6,7 +6,7 @@
 // if we don't have a record of that file's timestamp, proceed to hashing and back it up, 
 // if timestamp has changed, check for hash changes and either backup or skip
 
-use std::{collections::HashMap, fs, io, path::Path};
+use std::{fs, io, path::Path};
 use rpassword::prompt_password;
 
 pub mod crypto;
@@ -50,6 +50,13 @@ fn get_salt(dir: &Path) -> Vec<u8> {
     };
 
     salt
+}
+
+fn get_error() -> io::Error {
+    io::Error::new(
+        io::ErrorKind::NotFound, 
+        format!("No data backup available at specified origin path: 
+        \nCheck that your path is correct and password is valid"))
 }
 
 pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
@@ -104,34 +111,40 @@ pub fn restore(nth: u8, source: &str, target: &str) -> io::Result<()> {
         None
     };
 
-    let mut snapshot_files = HashMap::new();
-
     if let Some(snapshot_path) = nth_snapshot {
-        snapshot_files = snapshot::Snapshot::from_json_to_snapshot(&snapshot_path)?.files;
-    };
+        let snapshot_files = snapshot::Snapshot::from_json_to_snapshot(&snapshot_path)?.files;
+        
+        for (path, file_entry) in snapshot_files {
+            let hash_path = blobs_dir.join(&file_entry.hash);
 
-    for (path, file_entry) in snapshot_files {
-        let hash_path = blobs_dir.join(&file_entry.hash);
+            let ciphertext = fs::read(&hash_path)?;
+            let nonce_bytes = file_entry.nonce;
 
-        let ciphertext = fs::read(&hash_path)?;
-        let nonce_bytes = file_entry.nonce;
+            match crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes) {
+                Ok(decrytped) => {
+                    let rel_target = output_dir.join(path);
 
-        match crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes) {
-            Ok(decrytped) => {
-                let rel_target = output_dir.join(path);
-
-                if let Some(parent) = rel_target.parent() {
-                    let _ = fs::create_dir_all(parent)?;
+                    if let Some(parent) = rel_target.parent() {
+                        let _ = fs::create_dir_all(parent)?;
+                    }
+                    
+                    if let Err(err) = fs::write(&rel_target, &decrytped) {
+                        eprintln!("Could not write to restore file: {err}");
+                    }
+                },
+                Err(err) => {
+                    let er = get_error();
+                    eprintln!("[ERROR] Failed to decrypt file {:?} : {err}", path);
+                    return Err(er); // error indistinguishability.
                 }
-                
-                if let Err(err) = fs::write(&rel_target, &decrytped) {
-                    eprintln!("Could not write to restore file: {err}");
-                }
-            },
-            Err(err) => {
-                eprintln!("[ERROR] Failed to decrypt file {:?} : {err}", path);
             }
         }
+    }
+    else {
+        let err = get_error();
+        eprintln!("Failed to restore: \n{err}");
+        return Err(err);
+
     }
 
     println!("Restore to {target} completed.");
