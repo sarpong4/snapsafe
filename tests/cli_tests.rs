@@ -24,6 +24,7 @@ fn backup_n_times(n: usize, source: PathBuf, dest: PathBuf) -> (PathBuf, PathBuf
             .arg(&dest);
 
         cmd.assert().success();
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
     (source, dest)
@@ -147,14 +148,16 @@ fn test_cli_restore_to_first_version_after_3_backup_rounds_and_3_time_restore() 
     let (source, dest) = setup_file_dirs();
     let restore_dest = setup_dir();
 
+    write_test_file(source.join("file_0.txt"), "initial content");
+
     let first_source = setup_dir();
     copy_dir_all(&source, &first_source).unwrap();
     
-    let (_, dest1) = backup_n_times(3, source, dest);
+    let (_, dest1) = backup_n_times(3, source.clone(), dest);
 
-    let mut cmd2 = Command::cargo_bin("snapsafe").unwrap();
+    let mut cmd = Command::cargo_bin("snapsafe").unwrap();
 
-    cmd2.env("SNAPSAFE_PASSWORD", get_password())
+    cmd.env("SNAPSAFE_PASSWORD", get_password())
         .arg("restore")
         .arg("--number")
         .arg("3")
@@ -163,7 +166,7 @@ fn test_cli_restore_to_first_version_after_3_backup_rounds_and_3_time_restore() 
         .arg("--output")
         .arg(&restore_dest);
 
-    cmd2.assert().success().stdout(contains(format!("Restore to {} completed.", restore_dest.display())));
+    cmd.assert().success().stdout(contains(format!("Restore to {} completed.", restore_dest.display())));
 
     assert!(compare_dirs(first_source, restore_dest).unwrap())
 }
