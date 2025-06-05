@@ -127,12 +127,14 @@ fn test_cli_restore_with_correct_password_after_successful_backup() {
     let (source, dest) = setup_file_dirs();
     let restore_dest = setup_dir();
     
-    let (source1, dest1) = backup_n_times(1, source, dest);
+    let (source1, dest1) = backup_n_times(1, source.clone(), dest);
 
     let mut cmd2 = Command::cargo_bin("snapsafe").unwrap();
 
     cmd2.env("SNAPSAFE_PASSWORD", get_password())
         .arg("restore")
+        .arg("--number")
+        .arg("1")
         .arg("--origin")
         .arg(&dest1)
         .arg("--output")
@@ -140,7 +142,7 @@ fn test_cli_restore_with_correct_password_after_successful_backup() {
 
     cmd2.assert().success().stdout(contains(format!("Restore to {} completed.", restore_dest.display())));
 
-    assert!(compare_dirs(source1, restore_dest).unwrap())
+    assert!(compare_dirs(source, restore_dest).unwrap())
 }
 
 #[test]
@@ -152,8 +154,23 @@ fn test_cli_restore_to_first_version_after_3_backup_rounds_and_3_time_restore() 
 
     let first_source = setup_dir();
     copy_dir_all(&source, &first_source).unwrap();
-    
-    let (_, dest) = backup_n_times(3, source.clone(), dest.clone());
+
+    for i in 0..3 {
+        if i > 0 {
+            let file_path = source.join(format!("file_{}.txt", i));
+            write_test_file(file_path, "Adding a new file with content");
+        }
+
+        let mut cmd = Command::cargo_bin("snapsafe").unwrap();
+        cmd.env("SNAPSAFE_PASSWORD", get_password())
+            .arg("backup")
+            .arg("--source")
+            .arg(&source)
+            .arg("--dest")
+            .arg(&dest);
+
+        cmd.assert().success();
+    }
 
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
 
