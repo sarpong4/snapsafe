@@ -5,6 +5,7 @@ use predicates::str::contains;
 
 mod common;
 use common::{compare_dirs, copy_dir_all, get_password, setup_file_dirs, setup_dir, write_test_file};
+use tempfile::tempdir;
 
 fn backup_n_times(n: usize, source: PathBuf, dest: PathBuf) -> (PathBuf, PathBuf) {
 
@@ -76,13 +77,15 @@ fn test_cli_backup_without_target_directory() {
 #[test]
 fn test_cli_restore_with_correct_password_but_no_data_has_been_backed_up_should_fail() {
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
+    let origin = tempdir().unwrap();
+    let output = tempdir().unwrap();
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .arg("restore")
         .arg("--origin")
-        .arg("/backup_target")
+        .arg(origin.path())
         .arg("--output")
-        .arg("/test_backup");
+        .arg(output.path());
 
     cmd.assert()
         .failure()
