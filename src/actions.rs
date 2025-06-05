@@ -6,8 +6,10 @@
 // if we don't have a record of that file's timestamp, proceed to hashing and back it up, 
 // if timestamp has changed, check for hash changes and either backup or skip
 
-use std::{fs, io, path::Path};
+use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 use rpassword::prompt_password;
+
+use crate::actions::snapshot::Snapshot;
 
 pub mod crypto;
 pub mod gc;
@@ -80,8 +82,13 @@ pub fn backup_file(source: &str, target: &str) -> io::Result<()> {
 
     let salt = get_salt(&dest);
     let key = crypto::derive_key(&password, &salt);
-    let snap = snapshot::Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref())?;
-    let _ = snap.save(&blobs_dir, &snapshot_dir)?;
+    let snap = snapshot::Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref());
+    
+    if let Err(err) = snap {
+        eprintln!("Backup Aborted!");
+        return Err(err);
+    }
+    let _ = snap?.save(&blobs_dir, &snapshot_dir)?;
 
     println!("Backup completed successfully");
 
@@ -106,7 +113,7 @@ pub fn restore(nth: u8, source: &str, target: &str) -> io::Result<()> {
     let snapshot_dir = src.join("snapshot");
     
     let nth_snapshot = if snapshot_dir.try_exists().unwrap() {
-        get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|path| std::path::PathBuf::from(path))
+        get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|path| PathBuf::from(path))
     } else {
         None
     };
@@ -152,11 +159,100 @@ pub fn restore(nth: u8, source: &str, target: &str) -> io::Result<()> {
     Ok(())
 }
 
-pub fn delete(nth: u8, origin: String) {
-    todo!("Delete not implemented")
+pub fn delete(nth: u8, origin: &str, force: bool) -> io::Result<()> {
+    // DO YOU REALLY WANT TO DELETE?
+    let delete_confirm = if !force {
+        print!("Are you sure you want to permanently delete this backup? [y/N] ");
+        io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => {
+                let response = input.trim().to_lowercase();
+                response == "y" || response == "yes"
+            }
+            Err(_) => false,
+        }
+    } else {
+        force
+    };
+
+    if !delete_confirm {
+        println!("Delete Aborted!");
+        return Ok(());
+    }
+
+    let password = read_password();
+
+    let nth = (nth - 1) as usize;
+    let target = Path::new(origin);
+
+    if !target.try_exists().unwrap_or(false) {
+        let err = get_error();
+        eprintln!("Target does not exist");
+        // eprintln!("Failed to delete backup: Invalid password or unreadable metadata: {err}");
+        return Err(err);
+    }
+
+    let salt = get_salt(&target);
+    let key = crypto::derive_key(&password, &salt);
+
+    let blob_dir = target.join("blobs");
+    let snapshot_dir = target.join("snapshot");
+
+    let nth_snapshot = if snapshot_dir.try_exists().unwrap() {
+        get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|p| PathBuf::from(p))
+    } else {
+        None
+    };
+
+    if let Some(snap_path) = nth_snapshot {
+        let snapshot = Snapshot::from_json_to_snapshot(&snap_path)?;
+        let snapshot_files = snapshot.files;
+
+        for (path, file) in snapshot_files {
+            if file.isupdated {
+                let hash_path = blob_dir.join(&file.hash);
+
+                let ciphertext = fs::read(&hash_path)?;
+                let nonce_bytes = file.nonce;
+
+                match crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes) {
+                    Ok(_) => {
+                        if let Err(_) = fs::remove_file(hash_path) {
+                            let err = get_error();
+                            return Err(err);
+                        }
+
+                        // ONLY UPDATED FILES IN THE LATEST
+                        // SNAPSHOT VERSION FILE ARE DELETED
+                        // BUT THE SNAPSHOT VERSION FILE IS ALSO DELETED.
+                    },
+                    Err(err) => {
+                        let er = get_error();
+                        eprintln!("Failed to decrypt file {:?}: {err}", path);
+                        return Err(er);
+                    }
+                }
+            }
+        }
+        if let Err(_) = fs::remove_file(snap_path) {
+            let err = get_error();
+            return Err(err);
+        }
+    }
+    else {
+        let err = get_error();
+        eprintln!("Failed to delete backup: Invalid password or unreadable metadata: {err}");
+        return Err(err);
+    }
+
+    println!("Deletion complete.");
+
+    Ok(())
 }
 
-fn list_from_defined_path(path: &str) {
+fn list_from_defined_path(_path: &str) {
     todo!("list not implemented");
 }
 

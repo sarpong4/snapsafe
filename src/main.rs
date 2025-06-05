@@ -33,6 +33,8 @@ enum Commands {
         number: Option<u8>,
         #[arg(short = 'o', long, required = true)]
         origin: String,
+        #[arg(long)]
+        force: bool
     },
     List {
         #[arg(short = 'p', long, required = false)]
@@ -53,7 +55,9 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         Commands::Backup { source, target, } => {
-            let _ = actions::backup_file(&source, &target);
+            if let Err(err) = actions::backup_file(&source, &target) {
+                return  Err(Box::new(err));
+            }
             return Ok(());
         },
         Commands::Restore { number, origin, target } => {
@@ -68,8 +72,9 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
             }
             return Ok(());
         },
-        Commands::Delete { number, origin } => {
-            let _delete_return = actions::delete(number.unwrap_or(1), origin);
+        Commands::Delete { number, origin, force} => {
+            let _delete_return = 
+                actions::delete(number.unwrap_or(1), &origin, force);
             return Ok(());
         }
         Commands::List { path }=> {
