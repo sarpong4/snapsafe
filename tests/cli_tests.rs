@@ -153,7 +153,7 @@ fn test_cli_restore_to_first_version_after_3_backup_rounds_and_3_time_restore() 
     let first_source = setup_dir();
     copy_dir_all(&source, &first_source).unwrap();
     
-    let (_, dest1) = backup_n_times(3, source.clone(), dest);
+    let (_, dest) = backup_n_times(3, source.clone(), dest.clone());
 
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
 
@@ -162,7 +162,7 @@ fn test_cli_restore_to_first_version_after_3_backup_rounds_and_3_time_restore() 
         .arg("--number")
         .arg("3")
         .arg("--origin")
-        .arg(&dest1)
+        .arg(&dest)
         .arg("--output")
         .arg(&restore_dest);
 
