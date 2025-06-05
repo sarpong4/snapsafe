@@ -127,7 +127,7 @@ fn test_cli_restore_with_correct_password_after_successful_backup() {
     let (source, dest) = setup_file_dirs();
     let restore_dest = setup_dir();
     
-    let (source1, dest1) = backup_n_times(1, source.clone(), dest);
+    let (_, dest1) = backup_n_times(1, source.clone(), dest);
 
     let mut cmd2 = Command::cargo_bin("snapsafe").unwrap();
 
