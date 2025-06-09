@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use std::process::ExitCode;
 
 pub mod actions;
+pub mod common;
 
 // You can initialize file_to_hash inside a function when needed
 
@@ -36,10 +37,7 @@ enum Commands {
         #[arg(long)]
         force: bool
     },
-    List {
-        #[arg(short = 'p', long, required = false)]
-        path: String,
-    },
+    List, 
 }
 
 // fn usage(program: &str) {
@@ -77,8 +75,8 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 actions::delete(number.unwrap_or(1), &origin, force);
             return Ok(());
         }
-        Commands::List { path }=> {
-            actions::list(if path.is_empty() { None } else { Some(path) });
+        Commands::List => {
+            let _ = actions::list_from_registry();
             return Ok(());
         }
     }

@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod common;
 
 #[cfg(test)]
 mod crypto_tests {
