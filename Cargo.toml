@@ -10,6 +10,7 @@ chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.38", features = ["derive"] }
 datetime = "0.5.2"
 dirs = "6.0.0"
+hex = "0.4.3"
 password-hash = "0.5.0"
 rand = "0.9.1"
 rpassword = "7.4.0"
