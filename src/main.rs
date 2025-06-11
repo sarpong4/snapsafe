@@ -7,7 +7,11 @@ pub mod common;
 // You can initialize file_to_hash inside a function when needed
 
 #[derive(Parser)]
-#[command(name = "snapshot", version = "1.0")]
+#[command(name = "snapshot", version = "1.0", about = "A secure backup and restore tool.", after_help = "Strict password enforcement:\n\
+             - Backups are bound to the password used during creation.\n\
+             - If a different password is provided for the same destination, the operation will fail.\n\
+             - This is to prevent accidental overwrite or mismatched encryption keys.\n\
+             - To change the password in the future, use a planned `snapsafe rekey` command.")]
 struct CLI {
     #[command(subcommand)]
     command: Commands
@@ -15,12 +19,14 @@ struct CLI {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// use this to create a backup of a folder in some destination folder: `snapsafe backup --help` for usage info
     Backup {
         #[arg(short = 's', long = "source", required = true)]
-        source: String,
+        source: String, 
         #[arg(short = 'd', long = "dest", required = true)]
         target: String,
     },
+    /// use this to restore backup at a certain origin to an output directory: `snapsafe restore --help` for usage info
     Restore {
         #[arg(short = 'n', long, required = false)]
         number: Option<u8>,
@@ -29,6 +35,7 @@ enum Commands {
         #[arg(short = 'o', long = "output", required = true)]
         target: String,
     },
+    /// use this to delete the latest backup or the nth backup where 1 is the latest: `snapsafe delete --help` for usage info
     Delete{
         #[arg(short = 'n', long, required = false)]
         number: Option<u8>,
@@ -37,6 +44,7 @@ enum Commands {
         #[arg(long)]
         force: bool
     },
+    /// use this to list all backups a user has made: `snapsafe list`
     List, 
 }
 
@@ -53,7 +61,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         Commands::Backup { source, target, } => {
-            if let Err(err) = actions::backup_file(&source, &target) {
+            if let Err(err) = actions::backup_data(&source, &target) {
                 return  Err(Box::new(err));
             }
             return Ok(());

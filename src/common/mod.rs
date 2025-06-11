@@ -4,6 +4,30 @@ use rpassword::prompt_password;
 
 use crate::actions::registry::{BackupEntry, BackupRegistry};
 
+pub enum SnapError {
+    Backup,
+    Restore,
+    Delete,
+    List,
+}
+
+pub fn clear_directory(path: &Path) -> io::Result<()> {
+    if path.exists() && path.is_dir() {
+        for entry in fs::read_dir(&path)? {
+            let entry = entry?;
+            let entry_path = entry.path();
+            if entry_path.is_dir() {
+                fs::remove_dir_all(&entry_path)?;
+            }
+            else {
+                fs::remove_file(&entry_path)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub fn read_password() -> String {
     if let Ok(pwd) = std::env::var("SNAPSAFE_PASSWORD") {
         return pwd;
@@ -13,12 +37,26 @@ pub fn read_password() -> String {
 }
 
 pub fn get_registry() -> BackupRegistry {
-    let bkup_registry = BackupRegistry::new();
+    
+    let bkup_registry = 
+        if let Ok(_) = std::env::var("SNAPSAFE_TEST_REGISTRY") {
+            BackupRegistry::build_test_registy()
+        }
+        else {
+            BackupRegistry::new()
+        };
 
     let backup_registry = BackupRegistry::load_from_file(&bkup_registry.registry_path)
                 .unwrap_or(bkup_registry);
 
     backup_registry
+}
+
+pub fn hash_password(pw: &str) -> String {
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(pw.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 pub fn prompt_for_input(message: &str) -> Option<String> {
@@ -70,11 +108,21 @@ pub fn get_salt(dir: &Path) -> Vec<u8> {
     salt
 }
 
-pub fn get_error() -> io::Error {
-    io::Error::new(
-        io::ErrorKind::NotFound, 
-        format!("No data backup available at specified origin path: 
-        \nCheck that your path is correct and password is valid"))
+pub fn get_error(err: SnapError) -> io::Error {
+    match err {
+        SnapError::Backup => {
+            eprintln!("Backup Aborted!");
+            io::Error::new(
+                io::ErrorKind::NotFound, 
+                format!("An Error occurred during Backup."))
+        },
+        SnapError::Restore | SnapError::Delete | SnapError::List => {
+            eprintln!("Process Aborted!");
+            io::Error::new(
+                io::ErrorKind::NotFound, 
+                "No data backup available at specified origin path: Check that your path is correct and password is valid".to_string())
+        },
+    }
 }
 
 pub fn remove_snapshot(registry: &BackupRegistry, dest: PathBuf) -> Option<BackupEntry> {
