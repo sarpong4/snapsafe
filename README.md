@@ -1,6 +1,6 @@
 # Snapsafe
 
-Snapsafe Challenge: A systems-level tools that enforces fast, secure, and incremental backups with encryption and optional cloud upload. This is a CLI tool that allows users to specify files and directories to back up.
+A systems-level tool that enforces fast, secure, and incremental backups with encryption and optional cloud upload. This is a CLI tool that allows users to specify files and directories they want to back up.
 
 ## Part 1: Local Backup & Restore
 
@@ -40,7 +40,7 @@ snapsafe list
 ```
 
 - After each command, the CLI will prompt for a password to encrypt or decrypt the data.
-- The `backup` command creates a new backup of the specified source directory.
+- The `backup` command creates a new backup of the specified source directory. Each backup strictly enforces the password it was initialized with. This means that when you use a different password, the backup will not be accessible.
 - The `restore` command restores files from a specified snapshot version or the latest snapshot version in a backup directory to the target directory.
 - The `delete` command removes a specified backup or the latest backup.
 - The `list` command displays all available backups.
