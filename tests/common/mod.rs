@@ -42,6 +42,19 @@ fn collect_files(dir: &Path) -> io::Result<HashSet<PathBuf>> {
     Ok(files)
 }
 
+pub fn clear_test_registry() {
+    let mut path = dirs::cache_dir().unwrap();
+    path = path.join("Temp");
+
+    if !path.exists() {
+        return;
+    }
+
+    path.push("snapsafe_test_registry.json");
+
+    let _ = fs::remove_file(&path);
+}
+
 /// Compare two directories for identical file structure and content
 pub fn compare_dirs(dir1: PathBuf, dir2: PathBuf) -> io::Result<bool> {
     let files1 = collect_files(&dir1)?;
@@ -70,18 +83,4 @@ pub fn compare_dirs(dir1: PathBuf, dir2: PathBuf) -> io::Result<bool> {
     }
 
     Ok(true)
-}
-
-pub fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        if ty.is_dir() {
-            copy_dir_all(&entry.path(), &dst.join(entry.file_name()))?;
-        } else {
-            fs::copy(entry.path(), dst.join(entry.file_name()))?;
-        }
-    }
-    Ok(())
 }
