@@ -1,4 +1,4 @@
-use std::{fs, io, path::PathBuf};
+use std::{env, fs, io, path::PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -60,14 +60,9 @@ impl BackupRegistry {
     }
 
     pub fn build_test_registy() -> Self {
-        let cache_dir = dirs::cache_dir().expect("Could not find cache directory");
-        let temp_dir = cache_dir.join("Temp");
-        
-        if !temp_dir.exists() {
-            let _ = fs::create_dir_all(&temp_dir);
-        }
-
+        let temp_dir = env::temp_dir();
         let temp_json = temp_dir.join("snapsafe_test_registry.json");
+        
         if !temp_json.exists() {
             let _ = fs::File::create(&temp_json);
         }

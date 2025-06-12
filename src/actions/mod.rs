@@ -219,18 +219,20 @@ pub fn delete(nth: u8, origin: &str, force: bool) -> io::Result<()> {
 
                 match crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes) {
                     Ok(_) => {
-                        if let Err(_) = fs::remove_file(hash_path) {
+                        if let Err(_) = fs::remove_file(&hash_path) {
                             let err = common::get_error(common::SnapError::Delete);
                             return Err(err);
                         }
 
-                        // ONLY UPDATED FILES IN THE LATEST
-                        // SNAPSHOT VERSION FILE ARE DELETED
-                        // BUT THE SNAPSHOT VERSION FILE IS ALSO DELETED.
+                        if hash_path.exists() {
+                            eprintln!("Hash file {:?} was not deleted properly.", hash_path);
+                            let err = common::get_error(common::SnapError::Delete);
+                            return Err(err);
+                        }
                     },
                     Err(err) => {
-                        let er = common::get_error(common::SnapError::Delete);
                         eprintln!("Failed to decrypt data at {:?}: {err}", path);
+                        let er = common::get_error(common::SnapError::Delete);
                         return Err(er);
                     }
                 }
@@ -240,7 +242,9 @@ pub fn delete(nth: u8, origin: &str, force: bool) -> io::Result<()> {
             let err = common::get_error(common::SnapError::Delete);
             return Err(err);
         }
-        let mut registry = common::get_registry(); 
+        let mut registry = common::get_registry();
+        println!("{:?}", registry);
+        println!("Dest: {:?}", target);
         let entry = common::remove_snapshot(&mut registry, target.to_path_buf()).unwrap();
 
         let _ = registry.add_backup(entry);
@@ -256,6 +260,7 @@ pub fn delete(nth: u8, origin: &str, force: bool) -> io::Result<()> {
 
     Ok(())
 }
+
 
 pub fn list_from_registry() -> io::Result<()> {
     let registry = common::get_registry().registry;

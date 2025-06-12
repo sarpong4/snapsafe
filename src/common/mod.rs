@@ -39,7 +39,7 @@ pub fn read_password() -> String {
 pub fn get_registry() -> BackupRegistry {
     
     let bkup_registry = 
-        if let Ok(_) = std::env::var("SNAPSAFE_TEST_REGISTRY") {
+        if std::env::var("SNAPSAFE_TEST_REGISTRY").is_ok() {
             BackupRegistry::build_test_registy()
         }
         else {
