@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs::{self, File}, io::{self, Read, Write}, path::{Path, PathBuf}};
+use std::{collections::HashSet, env, fs::{self, File}, io::{self, Read, Write}, path::{Path, PathBuf}};
 
 use tempfile::tempdir;
 
@@ -43,16 +43,12 @@ fn collect_files(dir: &Path) -> io::Result<HashSet<PathBuf>> {
 }
 
 pub fn clear_test_registry() {
-    let mut path = dirs::cache_dir().unwrap();
-    path = path.join("Temp");
+    let temp_path = env::temp_dir();
+    let registry_path = temp_path.join("snapsafe_test_registry.json");
 
-    if !path.exists() {
-        return;
+    if registry_path.exists() {
+        let _ = fs::remove_file(&registry_path);
     }
-
-    path.push("snapsafe_test_registry.json");
-
-    let _ = fs::remove_file(&path);
 }
 
 /// Compare two directories for identical file structure and content
@@ -83,4 +79,25 @@ pub fn compare_dirs(dir1: PathBuf, dir2: PathBuf) -> io::Result<bool> {
     }
 
     Ok(true)
+}
+
+pub fn copy_dir_contents(from: &Path, to: &Path) -> io::Result<()> {
+    if !to.exists() {
+        fs::create_dir_all(to)?;
+    }
+
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let from_path = entry.path();
+        let to_path = to.join(entry.file_name());
+
+        if file_type.is_dir() {
+            copy_dir_contents(&from_path, &to_path)?;
+        } else {
+            fs::copy(&from_path, &to_path)?;
+        }
+    }
+
+    Ok(())
 }
