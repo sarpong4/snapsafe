@@ -79,8 +79,11 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         },
         Commands::Delete { number, origin, force} => {
-            let _delete_return = 
+            let delete_return = 
                 actions::delete(number.unwrap_or(1), &origin, force);
+            if let Err(err) = delete_return {
+                return Err(Box::new(err))
+            }
             return Ok(());
         }
         Commands::List => {
