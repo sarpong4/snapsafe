@@ -184,7 +184,7 @@ fn test_cli_restore_with_correct_password_after_successful_backup() {
 
     clear_test_registry(&registry);
     assert.success()
-        .stdout(contains(format!("Restore to {} completed.", restore_dest.display())));
+        .stdout(contains(format!("Restore to {:?} completed.", restore_dest.as_path().display())));
 }
 
 #[test]
