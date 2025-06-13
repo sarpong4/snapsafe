@@ -144,6 +144,16 @@ pub fn restore(nth: u8, source: &str, target: &str) -> io::Result<()> {
                 }
             }
         }
+        let mut registry = common::get_registry();
+        if let Some(entry) = common::remove_snapshot(&mut registry, src.to_path_buf()) {
+            let _ = registry.add_backup(entry);
+            let _ = registry.save_to_file();
+        }
+        else {
+            let err = common::get_error(common::SnapError::Delete);
+            eprintln!("Snapshot with backup path: {:?} does not exist.", target);
+            return Err(err);
+        }
 
     }
     else {
@@ -242,13 +252,17 @@ pub fn delete(nth: u8, origin: &str, force: bool) -> io::Result<()> {
             let err = common::get_error(common::SnapError::Delete);
             return Err(err);
         }
+        
         let mut registry = common::get_registry();
-        println!("{:?}", registry);
-        println!("Dest: {:?}", target);
-        let entry = common::remove_snapshot(&mut registry, target.to_path_buf()).unwrap();
-
-        let _ = registry.add_backup(entry);
-        let _ = registry.save_to_file();
+        if let Some(entry) = common::remove_snapshot(&mut registry, target.to_path_buf()) {
+            let _ = registry.add_backup(entry);
+            let _ = registry.save_to_file();
+        }
+        else {
+            let err = common::get_error(common::SnapError::Delete);
+            eprintln!("Snapshot with backup path: {:?} does not exist.", target);
+            return Err(err);
+        }
     }
     else {
         let err = common::get_error(common::SnapError::Delete);
