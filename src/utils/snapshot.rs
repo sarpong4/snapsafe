@@ -4,8 +4,8 @@ use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}, time::SystemTime};
 
-use crate::actions::crypto;
-use crate::actions::gc;
+use crate::crypto;
+use crate::utils::gc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Snapshot {

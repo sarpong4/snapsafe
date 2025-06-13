@@ -2,9 +2,14 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::actions::registry::{BackupEntry, BackupRegistry};
+use crate::utils::registry::{BackupEntry, BackupRegistry};
+
+pub mod gc;
+pub mod registry;
+pub mod snapshot;
 
 pub enum SnapError {
+    Command,
     Backup,
     Restore,
     Delete,
@@ -110,6 +115,13 @@ pub fn get_salt(dir: &Path) -> Vec<u8> {
 
 pub fn get_error(err: SnapError) -> io::Error {
     match err {
+        SnapError::Command => {
+            eprintln!("Process Failed!");
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "An error occured before the command could execute"
+            )
+        },
         SnapError::Backup => {
             eprintln!("Backup Aborted!");
             io::Error::new(
