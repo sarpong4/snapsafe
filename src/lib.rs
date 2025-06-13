@@ -1,8 +1,11 @@
 pub mod actions;
+pub mod commands;
+pub mod utils;
+pub mod crypto;
 
 #[cfg(test)]
 mod crypto_tests {
-    use crate::actions::crypto::*;
+    use crate::crypto::*;
 
     #[test]
     fn test_key_derivation_consistency() {
@@ -54,7 +57,8 @@ mod gc_tests {
 
     use tempfile::tempdir;
 
-    use crate::actions::gc::GarbageCollector;
+    use crate::utils::gc::GarbageCollector;
+
 
     #[test]
     fn test_garbage_collector_prunes_old_versions() {

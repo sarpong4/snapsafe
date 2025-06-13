@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fs::{self, File}, io::{self, Read, Write}, path::{Path, PathBuf}};
 
-use tempfile::tempdir;
+use tempfile::{tempdir, NamedTempFile};
 
 pub fn get_password() -> String {
     String::from("password")
@@ -42,6 +42,20 @@ fn collect_files(dir: &Path) -> io::Result<HashSet<PathBuf>> {
     Ok(files)
 }
 
+pub fn get_test_registry() -> String {
+    let unique_path = NamedTempFile::new().unwrap();
+    let unique_path = unique_path.path();
+
+    unique_path.to_string_lossy().to_string()
+}
+
+pub fn clear_test_registry(path: &str) {
+    let temp_path = Path::new(path);
+    if temp_path.exists() {
+        let _ = fs::remove_dir_all(temp_path);
+    }
+}
+
 /// Compare two directories for identical file structure and content
 pub fn compare_dirs(dir1: PathBuf, dir2: PathBuf) -> io::Result<bool> {
     let files1 = collect_files(&dir1)?;
@@ -72,16 +86,23 @@ pub fn compare_dirs(dir1: PathBuf, dir2: PathBuf) -> io::Result<bool> {
     Ok(true)
 }
 
-pub fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dst)?;
-    for entry in fs::read_dir(src)? {
+pub fn copy_dir_contents(from: &Path, to: &Path) -> io::Result<()> {
+    if !to.exists() {
+        fs::create_dir_all(to)?;
+    }
+
+    for entry in fs::read_dir(from)? {
         let entry = entry?;
-        let ty = entry.file_type()?;
-        if ty.is_dir() {
-            copy_dir_all(&entry.path(), &dst.join(entry.file_name()))?;
+        let file_type = entry.file_type()?;
+        let from_path = entry.path();
+        let to_path = to.join(entry.file_name());
+
+        if file_type.is_dir() {
+            copy_dir_contents(&from_path, &to_path)?;
         } else {
-            fs::copy(entry.path(), dst.join(entry.file_name()))?;
+            fs::copy(&from_path, &to_path)?;
         }
     }
+
     Ok(())
 }

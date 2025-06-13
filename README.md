@@ -1,46 +1,58 @@
-# Snapsafe
+# SnapSafe
 
-Snapsafe Challenge: A systems-level tools that enforces fast, secure, and incremental backups with encryption and optional cloud upload. This is a CLI tool that allows users to specify files and directories to back up.
+SnapSafe is a secure, and incremental backups tool with encryption and optional cloud upload. It is designed to protect your files through versioned snapshots and password-based encryption. It is built with simplicity and security in mind and allows you to specify files and directories you want to back-up/restore.
 
-## Part 1: Local Backup & Restore
+## Features
 
-Making local backups of files and directories with encryption and compression. User gets to decide what, when, and how to backup and restore their data.
+- 📦 Incremental backup with snapshot versioning
+- 🔐 AES-256 encryption with password-derived keys
+- 📂 Restore to any snapshot version
+- 🧾 List and delete snapshots
+- 🧪 Built-in testable architecture
 
-### Process
-
-- Each backup creates a snapshot that is a record of the state of the files at that time.
-
-        - We only target new files and files with changes
-        - We also can restore to a previous snapshot
-
-- The backup data is encrypted using AES-256. Incidentally, the backup data is also compressed to save space.
-- Backup version history is not perpetual, but rather limited to a certain number of snapshots (e.g., 10). Old snapshots are deleted when the limit is reached. Right now, the limit is set to 3 snapshots. When the CLI `config` feature is implemented, this limit can be adjusted by the user.
-
-### Features
-
-- **Incremental Backups**: Only new or changed files are backed up after the initial backup.
-- **Encryption**: All backups are encrypted using AES-256. Passwords are hashed and stored securely.
-- **Compression**: Backups are compressed to save space.
-- **File Integrity Check**: Each backup includes a checksum to verify file integrity.
-- **Snapshot Management**: Users can view, restore, and delete snapshots.
-
-### Usage
-
-Usage in shell:
+## Installation
 
 ```bash
-
-snapsafe backup --source <source> --dest <target>
-snapsafe restore --origin <origin> --output <target> 
-snapsafe -n <nth> restore --origin <origin> --output <target>
-snapsafe delete --origin <origin>
-snapsafe delete -n <nth> --origin <origin>
-snapsafe list 
-
+cargo build --release
 ```
 
-- After each command, the CLI will prompt for a password to encrypt or decrypt the data.
-- The `backup` command creates a new backup of the specified source directory.
-- The `restore` command restores files from a specified snapshot version or the latest snapshot version in a backup directory to the target directory.
-- The `delete` command removes a specified backup or the latest backup.
-- The `list` command displays all available backups.
+Or add it as a local dependency in your `Cargo.toml`.
+
+## Example
+
+```bash
+snapsafe backup --source ~/Documents --dest /mnt/backups
+snapsafe restore --origin ./restore --output ./after_restore
+```
+
+Refer to [this file](./docs/PART1.md) for more information on command line logic.
+
+## Project Structure
+
+```bash
+src/
+├── actions             # Core backup/restore actions logic
+|  ├── mod.rs
+|  ├── backup.rs
+|  ├── restore.rs
+|  ├── delete.rs
+├── commands.rs            # Command-line parsing
+├── crytpo.rs           # encryption logic
+├── utils             # helper functions and other system logic
+|  ├── mod.rs
+|  ├── gc.rs            # Garbage Collector to handle version limits
+|  ├── registry.rs      # registry management
+|  ├── snapshot.rs      # snapshot implementation logic
+tests/
+```
+
+## Security
+
+SnapSafe encrypts your data using AES-256 in GCM mode. Passwords are processed using PBKDF2 or Argon2 to generate keys securely.
+
+## Roadmap
+
+- ✅ Basic backup/restore/delete
+- 🔜 Configurable compression/encryption
+- 🔜 Cloud sync (S3/GCS)
+- 🔜 Daemon mode for scheduling

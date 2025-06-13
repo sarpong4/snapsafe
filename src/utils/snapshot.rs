@@ -4,8 +4,8 @@ use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}, time::SystemTime};
 
-use crate::actions::crypto;
-use crate::actions::gc;
+use crate::crypto;
+use crate::utils::gc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Snapshot {
@@ -17,12 +17,14 @@ pub struct Snapshot {
 pub struct FileEntry {
     pub hash: String,
     pub nonce: [u8; 12],
-    pub modified: SystemTime
+    pub modified: SystemTime,
+    pub isupdated: bool
 }
 
 impl Snapshot {
     pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>) -> io::Result<Self> {
         let mut files = HashMap::<PathBuf, FileEntry>::new();
+        let mut old_files = HashMap::<PathBuf, FileEntry>::new();
 
         // get the latest json for this target path.
         let last_state = if let Some(json_path) = latest_json_path {
@@ -47,28 +49,41 @@ impl Snapshot {
                 };
 
 
-                let _ = match prev_state {
+                match prev_state {
                     Some(f) if metadata.modified()? == f.modified => {
-                        files.insert(rel_path, f.clone());
+                        let mut file = f.clone();
+                        file.isupdated = false;
+                        old_files.insert(rel_path, file);
                     }
                     Some(file_entry) if file_entry.hash == format!("{:x}", &hash) => {
-                        files.insert(rel_path, file_entry.clone());
+                        let mut file = file_entry.clone();
+                        file.isupdated = false;
+                        old_files.insert(rel_path, file);
                     },
                     _ => {
                         let (ciphertext, nonce) = crypto::encrypt_file_bytes(&content, key);
 
                         let hash_hex = format!("{:x}", hash);
                         let blob_path = target.join(&hash_hex);
-                        let nonce_path = target.join(format!("{}.nonce", &hash_hex));
 
                         fs::write(&blob_path, ciphertext)?;
-                        fs::write(&nonce_path, nonce)?;
 
-                        files.insert(rel_path, FileEntry { hash: hash_hex, nonce, modified: SystemTime::now() });
+                        files.insert(rel_path, FileEntry { hash: hash_hex, nonce, modified: SystemTime::now(), isupdated: true });
                     }
-                };
+                }
             }
         }
+
+        if files.is_empty() {
+            let err = io::Error::new(
+                io::ErrorKind::InvalidData, 
+                format!("No File changes and hence backup aborted."));
+            return Err(err);
+        }
+        else {
+            files.extend(old_files);
+        }
+        
         Ok(
             Self{ timestamp: Utc::now(), files }
         )
