@@ -1,6 +1,6 @@
-use std::{collections::HashSet, env, fs::{self, File}, io::{self, Read, Write}, path::{Path, PathBuf}};
+use std::{collections::HashSet, fs::{self, File}, io::{self, Read, Write}, path::{Path, PathBuf}};
 
-use tempfile::tempdir;
+use tempfile::{tempdir, NamedTempFile};
 
 pub fn get_password() -> String {
     String::from("password")
@@ -42,12 +42,17 @@ fn collect_files(dir: &Path) -> io::Result<HashSet<PathBuf>> {
     Ok(files)
 }
 
-pub fn clear_test_registry() {
-    let temp_path = env::temp_dir();
-    let registry_path = temp_path.join("snapsafe_test_registry.json");
+pub fn get_test_registry() -> String {
+    let unique_path = NamedTempFile::new().unwrap();
+    let unique_path = unique_path.path();
 
-    if registry_path.exists() {
-        let _ = fs::remove_file(&registry_path);
+    unique_path.to_string_lossy().to_string()
+}
+
+pub fn clear_test_registry(path: &str) {
+    let temp_path = Path::new(path);
+    if temp_path.exists() {
+        let _ = fs::remove_dir_all(temp_path);
     }
 }
 
