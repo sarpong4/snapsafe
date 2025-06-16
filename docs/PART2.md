@@ -9,7 +9,7 @@ The goal here is to implement compression and version diffing for the backup sys
 - I will talk about the compression and version diffing process in the context of the backup system.
 - I have not decided on the compression algorithm yet. I am thinking to have a default algorithm and when config is implemented, the user can choose a different from the available options.
 - Compression will be applied to the backup data to reduce storage space. This will be done transparently, so users will not need to worry about the details of how it works.
-- Compression will be applied to the backup data after encryption, ensuring that the data remains secure while still benefiting from reduced storage space.
+- Compression will be applied to the backup data before encryption, ensuring that the data remains secure while still benefiting from reduced storage space.
 - Version diffing will be implemented to track changes between different versions of files. This will allow users to see what has changed between backups and restore specific versions if needed.
 - When a tracked file is renamed, the system still treats it as the same file, allowing users to restore the file to its previous state even after renaming.
 - When a restore on a renamed file occurs at a point in time before the rename, the system will restore the file with its original name. This ensures that users can access previous versions of files even if they have been renamed since the backup was created.
