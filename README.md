@@ -52,7 +52,7 @@ SnapSafe encrypts your data using AES-256 in GCM mode. Passwords are processed u
 
 ## Roadmap
 
-- ✅ Basic backup/restore/delete
-- 🔜 Configurable compression/encryption
+- ✅ Basic backup/restore/delete: [See here...](./docs/PART1.md)
+- ⌛ Configurable compression/encryption, version diffing: [See here...](./docs/PART2.md)
 - 🔜 Cloud sync (S3/GCS)
 - 🔜 Daemon mode for scheduling
