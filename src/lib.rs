@@ -101,3 +101,14 @@ mod gc_tests {
         assert_eq!(current, &["h1"]);
     }
 }
+
+mod snapshot_tests {
+    // use tempfile::tempdir;
+
+    use crate::utils::snapshot;
+}
+
+mod registry_tests {
+    // use tempfile::tempdir;
+    use crate::utils::registry;
+}

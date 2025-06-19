@@ -7,7 +7,9 @@ pub enum CompressionType {
     None,
     Gzip,
     Zlib,
-    // Future: Brotli, LZMA, Zstd, etc.
+    Brotli,
+    Zstd,
+    LZMA,
 }
 
 
@@ -30,3 +32,7 @@ impl Compressor for ZlibEncoder<Vec<u8>> {
         encoder.finish()
     }
 }
+
+// implementation of Compressor for Brotli
+// implementation of Compressor for LZMA
+// implementation of Compressor for Zstd

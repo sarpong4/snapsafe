@@ -22,12 +22,18 @@ impl CompressDecompress for CompressionType {
         match self {
             CompressionType::Gzip | CompressionType::None => GzEncoder::compress(data),
             CompressionType::Zlib => ZlibEncoder::compress(data),
+            CompressionType::Brotli => ZlibEncoder::compress(data),
+            CompressionType::Zstd => ZlibEncoder::compress(data),
+            CompressionType::LZMA => ZlibEncoder::compress(data),
         }
     }
     fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         match self {
             CompressionType::Gzip | CompressionType::None => GzDecoder::decompress(data),
             CompressionType::Zlib => ZlibDecoder::decompress(data),
+            CompressionType::Brotli => ZlibDecoder::decompress(data),
+            CompressionType::Zstd => ZlibDecoder::decompress(data),
+            CompressionType::LZMA => ZlibDecoder::decompress(data),
         }
     }
 }
