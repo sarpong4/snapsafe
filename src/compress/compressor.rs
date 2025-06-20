@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use brotli2::{write::BrotliEncoder, CompressionLevel};
+use brotli2::{write::BrotliEncoder};
 use flate2::{write::{GzEncoder, ZlibEncoder}, Compression};
 
 #[derive(Clone)]
@@ -35,6 +35,12 @@ impl Compressor for ZlibEncoder<Vec<u8>> {
 }
 
 // implementation of Compressor for Brotli
-impl Compressor for Brrot
+impl Compressor for BrotliEncoder<Vec<u8>> {
+    fn compress(data: &[u8]) -> io::Result<Vec<u8>> {
+        let mut encoder = Self::new(Vec::new(), 6);
+        encoder.write_all(data)?;
+        encoder.finish()
+    }
+}
 // implementation of Compressor for LZMA
 // implementation of Compressor for Zstd

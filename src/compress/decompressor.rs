@@ -1,5 +1,6 @@
-use std::io::{self, Read};
+use std::io::{self, BufRead, Read};
 
+use brotli2::bufread::BrotliDecoder;
 use flate2::read::{GzDecoder, ZlibDecoder};
 
 /**
@@ -23,6 +24,15 @@ impl<R: Read> Decompressor<R> for ZlibDecoder<R> {
 }
 
 impl<R: Read> Decompressor<R> for GzDecoder<R> {
+    fn decompress(data: R) -> io::Result<Vec<u8>> {
+        let mut decoder = Self::new(data);
+        let mut decompressed = Vec::new();
+        decoder.read_to_end(&mut decompressed)?;
+        Ok(decompressed)
+    }
+}
+
+impl<R: BufRead> Decompressor<R> for BrotliDecoder<R> {
     fn decompress(data: R) -> io::Result<Vec<u8>> {
         let mut decoder = Self::new(data);
         let mut decompressed = Vec::new();

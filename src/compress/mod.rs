@@ -1,5 +1,6 @@
 use std::io;
 
+use brotli2::bufread::{BrotliDecoder, BrotliEncoder};
 use flate2::{read::{GzDecoder, ZlibDecoder}, write::{GzEncoder, ZlibEncoder}};
 
 use crate::compress::{compressor::{CompressionType, Compressor}, decompressor::Decompressor};
@@ -22,7 +23,7 @@ impl CompressDecompress for CompressionType {
         match self {
             CompressionType::Gzip | CompressionType::None => GzEncoder::compress(data),
             CompressionType::Zlib => ZlibEncoder::compress(data),
-            CompressionType::Brotli => ZlibEncoder::compress(data),
+            CompressionType::Brotli => BrotliEncoder::compress(data),
             CompressionType::Zstd => ZlibEncoder::compress(data),
             CompressionType::LZMA => ZlibEncoder::compress(data),
         }
@@ -31,7 +32,7 @@ impl CompressDecompress for CompressionType {
         match self {
             CompressionType::Gzip | CompressionType::None => GzDecoder::decompress(data),
             CompressionType::Zlib => ZlibDecoder::decompress(data),
-            CompressionType::Brotli => ZlibDecoder::decompress(data),
+            CompressionType::Brotli => BrotliDecoder::decompress(data),
             CompressionType::Zstd => ZlibDecoder::decompress(data),
             CompressionType::LZMA => ZlibDecoder::decompress(data),
         }
