@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 aes-gcm = "0.10.3"
 argon2 = "0.5.3"
-brotli = "8.0.1"
+brotli2 = "0.3.2"
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.38", features = ["derive"] }
 datetime = "0.5.2"
