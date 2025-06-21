@@ -22,6 +22,8 @@ pub enum Commands {
         source: String, 
         #[arg(short = 'd', long = "dest", required = true)]
         target: String,
+        #[arg(short = 'c', long = "config", required = false)]
+        config: Option<String>
     },
     /// use this to restore backup at a certain origin to an output directory: `snapsafe restore --help` for usage info
     Restore {
@@ -50,7 +52,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CLI::parse();
 
     match cli.command {
-        Commands::Backup { source, target, } => {
+        Commands::Backup { source, target,  config} => {
             let src = Path::new(&source);
             let dest = Path::new(&target);
 
@@ -60,7 +62,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 return Err(Box::new(err));
             }
 
-            if let Err(err) = actions::backup(src, dest) {
+            if let Err(err) = actions::backup(src, dest, config) {
                 return  Err(Box::new(err));
             }
             return Ok(());
