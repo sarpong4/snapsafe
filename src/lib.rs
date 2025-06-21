@@ -103,12 +103,7 @@ mod gc_tests {
 }
 
 mod snapshot_tests {
-    // use tempfile::tempdir;
-
-    use crate::utils::snapshot;
 }
 
 mod registry_tests {
-    // use tempfile::tempdir;
-    use crate::utils::registry;
 }
