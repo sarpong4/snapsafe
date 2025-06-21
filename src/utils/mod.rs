@@ -2,7 +2,7 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::utils::registry::{BackupEntry, BackupRegistry};
+use crate::{compress::{decompressor::DecompressionEngine, CompressionEngine, CompressionType}, utils::registry::{BackupEntry, BackupRegistry}};
 
 pub mod gc;
 pub mod registry;
@@ -14,6 +14,28 @@ pub enum SnapError {
     Restore,
     Delete,
     List,
+}
+
+/// Generate a compression engine from the config information provided.
+/// 
+/// If `config` is `None`, it means the user didn't provide an algorithm option
+///  in the command line and there is no entry for this in the registry.
+/// 
+/// If we still find nothing (this is the first backup for this path) we then look 
+/// through the local config folder for this definition and if it is still None
+/// then we look at the global config folder
+pub fn generate_compression_engine(_config: Option<String>) -> CompressionEngine {
+
+    CompressionEngine::new(CompressionType::Gzip, 6)
+}
+
+
+/// Look through the registry for the path and obtain that entry information.
+/// We will get to know the kind of algorithm the compression used.
+/// open to further refinement
+pub fn generate_decompression_engine(_config: String) -> DecompressionEngine {
+
+    DecompressionEngine::new(CompressionType::Gzip)
 }
 
 pub fn clear_directory(path: &Path) -> io::Result<()> {
