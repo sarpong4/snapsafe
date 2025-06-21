@@ -40,7 +40,7 @@ bucket = "my-snapsafe-backups"
 
 SnapSafe will look for a config file in the following order:
 
-1. `--config <path>` (explicitly provided)
+1. `--config <option>` (explicitly provided)
 2. `$HOME/.snapsafe/.snapsafe.toml`
 3. `./snapsafe.toml`
 
