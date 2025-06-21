@@ -14,8 +14,8 @@ pub mod backup;
 pub mod delete;
 pub mod restore;
 
-pub fn backup(src: &Path, dest: &Path) -> io::Result<()> {
-    backup::backup_data(src, dest)
+pub fn backup(src: &Path, dest: &Path, config: Option<String>) -> io::Result<()> {
+    backup::backup_data(src, dest, config)
 }
 
 pub fn restore(nth: u8, src: &Path, output_dir: &Path) -> io::Result<()> {
