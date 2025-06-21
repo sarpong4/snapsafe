@@ -1,40 +1,37 @@
 use std::io;
 
-use brotli2::bufread::{BrotliDecoder, BrotliEncoder};
-use flate2::{read::{GzDecoder, ZlibDecoder}, write::{GzEncoder, ZlibEncoder}};
-
-use crate::compress::{compressor::{CompressionType, Compressor}, decompressor::Decompressor};
-
 pub mod compressor;
 pub mod decompressor;
+
+pub use compressor::{CompressionType, CompressionEngine};
+
+use crate::compress::decompressor::DecompressionEngine;
 
 // algorithm levels
 // gzip/zlib -> use default (6)
 // brotli -> use balanced (6)
 // zstd -> use balanced (3)
+// lzma -> use balanced (7)
 
-pub trait CompressDecompress {
-    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>>;
-    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>>;
+pub fn build_compress_engine() -> CompressionEngine {
+    // parse config according to overriding definition:
+    // check if it is part of the command line arguments first
+    // if not check global config file if none
+    // check local config
+    CompressionEngine::new(CompressionType::Brotli, 6)
 }
 
-impl CompressDecompress for CompressionType {
-    fn compress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        match self {
-            CompressionType::Gzip | CompressionType::None => GzEncoder::compress(data),
-            CompressionType::Zlib => ZlibEncoder::compress(data),
-            CompressionType::Brotli => BrotliEncoder::compress(data),
-            CompressionType::Zstd => ZlibEncoder::compress(data),
-            CompressionType::LZMA => ZlibEncoder::compress(data),
-        }
-    }
-    fn decompress(&self, data: &[u8]) -> io::Result<Vec<u8>> {
-        match self {
-            CompressionType::Gzip | CompressionType::None => GzDecoder::decompress(data),
-            CompressionType::Zlib => ZlibDecoder::decompress(data),
-            CompressionType::Brotli => BrotliDecoder::decompress(data),
-            CompressionType::Zstd => ZlibDecoder::decompress(data),
-            CompressionType::LZMA => ZlibDecoder::decompress(data),
-        }
-    }
+pub fn build_decompression_engine() -> DecompressionEngine {
+
+    DecompressionEngine::new(CompressionType::Brotli)
+}
+
+pub fn compress(data: &[u8], algorithm: CompressionType, level: u32) -> io::Result<Vec<u8>> {
+    let engine = CompressionEngine::new(algorithm, level);
+    engine.compress(data)
+}
+
+pub fn decompress(data: &[u8], algorithm: CompressionType) -> io::Result<Vec<u8>> {
+    let engine = DecompressionEngine::new(algorithm);
+    engine.decompress(data)
 }
