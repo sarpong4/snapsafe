@@ -8,14 +8,14 @@
 
 use std::{io, path::Path};
 
-use crate::{crypto, utils};
+use crate::{config::Config, crypto, utils};
 
 pub mod backup;
 pub mod delete;
 pub mod restore;
 
-pub fn backup(src: &Path, dest: &Path, config: Option<String>) -> io::Result<()> {
-    backup::backup_data(src, dest, config)
+pub fn backup(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
+    backup::backup_data(src, dest, comp, config)
 }
 
 pub fn restore(nth: u8, src: &Path, output_dir: &Path) -> io::Result<()> {

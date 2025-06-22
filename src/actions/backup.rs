@@ -1,9 +1,16 @@
 use std::{fs, io, path::Path};
 
-use crate::{actions::crypto, utils::{self, registry::BackupEntry, snapshot::Snapshot}};
+use crate::{actions::crypto, config::{build_global_config, Config}, utils::{self, registry::BackupEntry, snapshot::Snapshot}};
 
-pub fn backup_data(src: &Path, dest: &Path, config: Option<String>) -> io::Result<()> {
+pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
     let password = utils::read_password();
+    let mut algorithm = comp;
+
+    if config.is_none() {
+        // let us build a config
+        println!("No config has been defined yet. We will require you to build one. Please respond to the prompts");
+        let config = Some(build_global_config()?);
+    }
 
     if !dest.exists() {
         fs::create_dir_all(&dest)?;
@@ -27,22 +34,23 @@ pub fn backup_data(src: &Path, dest: &Path, config: Option<String>) -> io::Resul
             let err = utils::get_error(utils::SnapError::Backup);
             return Err(err);
         }
+
+        // use the compression algorithm on the BackupEntry even if it is different from the one 
+        // the user provided now. We use the same algorithm throughout when we compress a 
+        // given source -> destination
+        algorithm = Some(ent.compression_algorithm.clone()); 
     };
 
-    // let config = {
-    //     if let Some(ent) = entry {
-    //         if config.is_none() {
-    //             Some(ent.algorithm)
-    //         }
-    //     }
-    // }
+
 
     // we need the latest json file if there is any
-    let latest_json = utils::get_nth_recent_json_snapshot(0, &snapshot_dir)?.map(|path| std::path::PathBuf::from(path));
+    let latest_json = 
+            utils::get_nth_recent_json_snapshot(0, &snapshot_dir)?
+                .map(|path| std::path::PathBuf::from(path));
 
     let salt = utils::get_salt(&dest);
     let key = crypto::derive_key(&password, &salt);
-    let engine = utils::generate_compression_engine(config);
+    let (engine, conf) = utils::generate_compression_engine(algorithm);
     let snap = Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref(), engine);
     
     if let Err(err) = snap {
@@ -62,7 +70,7 @@ pub fn backup_data(src: &Path, dest: &Path, config: Option<String>) -> io::Resul
         ent = en.clone();
     }
     else {
-        ent = BackupEntry::new(snap.timestamp, src.to_path_buf(), dest.to_path_buf(), password_hash);
+        ent = BackupEntry::new(snap.timestamp, src.to_path_buf(), dest.to_path_buf(), password_hash, conf);
     }
 
     let _ = registry.add_backup(ent);
