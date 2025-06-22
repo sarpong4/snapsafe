@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod commands;
+pub mod compress;
 pub mod utils;
 pub mod crypto;
 
@@ -99,4 +100,10 @@ mod gc_tests {
         assert_eq!(current.len(), 1);
         assert_eq!(current, &["h1"]);
     }
+}
+
+mod snapshot_tests {
+}
+
+mod registry_tests {
 }

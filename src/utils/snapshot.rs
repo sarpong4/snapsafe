@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}, time::SystemTime};
 
-use crate::crypto;
+use crate::{compress::CompressionEngine, crypto};
 use crate::utils::gc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -22,7 +22,7 @@ pub struct FileEntry {
 }
 
 impl Snapshot {
-    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>) -> io::Result<Self> {
+    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>, engine: CompressionEngine) -> io::Result<Self> {
         let mut files = HashMap::<PathBuf, FileEntry>::new();
         let mut old_files = HashMap::<PathBuf, FileEntry>::new();
 
@@ -41,6 +41,7 @@ impl Snapshot {
             if path.is_file() {
                 let rel_path = path.strip_prefix(src).unwrap().to_path_buf();
                 let content = fs::read(path)?;
+                let content = engine.compress(&content)?;
                 let hash = Sha256::digest(&content);
                 
                 let prev_state = match last_state {

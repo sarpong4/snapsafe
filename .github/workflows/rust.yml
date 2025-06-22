@@ -19,6 +19,6 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Run CLI Integration Tests
-      run: cargo test --test cli_tests
+      run: cargo test --test cli_tests --verbose
     - name: Run Other Unit Tests
-      run: cargo test --lib
+      run: cargo test --lib --verbose
