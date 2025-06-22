@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 
-use crate::{actions, utils::{get_error, SnapError}};
+use crate::{actions, config::{build_global_config, build_local_config, get_config}, utils::{get_error, SnapError}};
 
 #[derive(Parser)]
 #[command(name = "snapshot", version = "1.0", about = "A secure backup and restore tool.", after_help = "Strict password enforcement:\n\
@@ -16,14 +16,22 @@ pub struct CLI {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// generate the process to build a config file for your system.
+    /// you have the option to build a local config and global config, add it to your command
+    Config {
+        #[arg(short = 'g', required = false)]
+        global: bool,
+        #[arg(short = 'l', required = false)]
+        local: bool
+    },
     /// use this to create a backup of a folder in some destination folder: `snapsafe backup --help` for usage info
     Backup {
         #[arg(short = 's', long = "source", required = true)]
         source: String, 
         #[arg(short = 'd', long = "dest", required = true)]
         target: String,
-        #[arg(short = 'c', long = "config", required = false)]
-        config: Option<String>
+        #[arg(short = 'c', long = "comp", required = false)]
+        comp: Option<String>
     },
     /// use this to restore backup at a certain origin to an output directory: `snapsafe restore --help` for usage info
     Restore {
@@ -50,9 +58,23 @@ pub enum Commands {
 
 pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CLI::parse();
+    let config = get_config();
 
     match cli.command {
-        Commands::Backup { source, target,  config} => {
+        Commands::Config { global: _, local } => {
+            let conf_build = if local {
+                build_local_config()
+            } else {
+                build_global_config()
+            };
+
+            if let Err(err) = conf_build {
+                return Err(Box::new(err));
+            }
+
+            return Ok(());
+        },
+        Commands::Backup { source, target,  comp} => {
             let src = Path::new(&source);
             let dest = Path::new(&target);
 
@@ -62,7 +84,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 return Err(Box::new(err));
             }
 
-            if let Err(err) = actions::backup(src, dest, config) {
+            if let Err(err) = actions::backup(src, dest, comp, config) {
                 return  Err(Box::new(err));
             }
             return Ok(());
