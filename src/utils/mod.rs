@@ -10,6 +10,7 @@ pub mod snapshot;
 
 pub enum SnapError {
     Command,
+    Config,
     Backup,
     Restore,
     Delete,
@@ -24,9 +25,11 @@ pub enum SnapError {
 /// If we still find nothing (this is the first backup for this path) we then look 
 /// through the local config folder for this definition and if it is still None
 /// then we look at the global config folder
-pub fn generate_compression_engine(_config: Option<String>) -> CompressionEngine {
+pub fn generate_compression_engine(config: Option<String>) -> (CompressionEngine, String) {
+    // look through local ./snapsafe.toml
+    // let local_snapsafe = 
 
-    CompressionEngine::new(CompressionType::Gzip, 6)
+    (CompressionEngine::new(CompressionType::Gzip, 6), config.unwrap())
 }
 
 
@@ -77,6 +80,14 @@ pub fn get_registry() -> BackupRegistry {
                 .unwrap_or(bkup_registry);
 
     backup_registry
+}
+
+pub fn get_registry_path() -> String {
+    get_registry().registry_path.to_string_lossy().to_string()
+}
+
+pub fn generate_registry(path: String) -> BackupRegistry {
+    BackupRegistry::load_from_file(&PathBuf::from(path)).unwrap()
 }
 
 pub fn hash_password(pw: &str) -> String {
@@ -142,6 +153,13 @@ pub fn get_error(err: SnapError) -> io::Error {
             io::Error::new(
                 io::ErrorKind::InvalidData,
                 "An error occured before the command could execute"
+            )
+        },
+        SnapError::Config => {
+            eprintln!("Config Build Aborted");
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "An error occured before the config process could complete"
             )
         },
         SnapError::Backup => {

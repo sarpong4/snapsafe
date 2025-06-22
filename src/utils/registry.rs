@@ -12,6 +12,7 @@ pub struct BackupEntry {
     pub backup_path: PathBuf,
     pub passsword_hash: String,
     pub snapshot_count: usize,
+    pub compression_algorithm: String,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -21,7 +22,7 @@ pub struct BackupRegistry {
 }
 
 impl BackupEntry {
-    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: String) -> Self {
+    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: String, config: String) -> Self {
         let id = Uuid::new_v4().to_string();
 
         Self { 
@@ -30,7 +31,8 @@ impl BackupEntry {
             origin_path: src, 
             backup_path: target, 
             passsword_hash: password, 
-            snapshot_count: 1 
+            snapshot_count: 1,
+            compression_algorithm: config,
         }
     }
 
@@ -89,7 +91,7 @@ impl BackupRegistry {
     pub fn load_from_file(path: &PathBuf) -> io::Result<Self> {
 
         if !path.exists() {
-            return Ok(BackupRegistry::default());
+            fs::File::create(path)?;
         }
 
         let data = fs::read_to_string(path)?;
