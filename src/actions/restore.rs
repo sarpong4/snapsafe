@@ -1,6 +1,6 @@
 use std::{fs, io, path::{Path, PathBuf}};
 
-use crate::{actions::crypto, compress, utils::{self, snapshot::Snapshot, SnapError}};
+use crate::{actions::crypto, utils::{self, snapshot::Snapshot, SnapError}};
 
 /// Restore the nth version of a backup at the location: `src`
 /// Returns: `Ok(())` when successful or `Err` on any kind of failure.
@@ -31,7 +31,7 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> io::Result<()> {
         }
     };
 
-    let engine = compress::build_decompression_engine(comp)?;
+    let engine = utils::generate_decompression_engine(comp);
 
 
     if !output_dir.try_exists().unwrap_or(false) {
