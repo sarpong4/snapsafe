@@ -22,7 +22,7 @@ pub struct BackupRegistry {
 }
 
 impl BackupEntry {
-    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: String, config: String) -> Self {
+    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: String, compression: String) -> Self {
         let id = Uuid::new_v4().to_string();
 
         Self { 
@@ -32,7 +32,7 @@ impl BackupEntry {
             backup_path: target, 
             passsword_hash: password, 
             snapshot_count: 1,
-            compression_algorithm: config,
+            compression_algorithm: compression,
         }
     }
 
@@ -82,6 +82,10 @@ impl BackupRegistry {
         })
     }
 
+    /// Given a destination path, `dest`, find the entry saved in the registry
+    /// 
+    /// Note: Destination path is always unique, when a backup is made to that path from source,
+    /// the idea is that you cannot make another backup to that path.
     pub fn find_entry_from_dest(&self, dest: PathBuf) -> Option<&BackupEntry> {
         self.registry.iter().find(|en| {
             en.backup_path == dest
