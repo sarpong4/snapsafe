@@ -157,7 +157,6 @@ fn build_config(config_path: PathBuf) -> io::Result<Config> {
     let toml_string = toml::to_string_pretty(&config).expect("Serialization Failed");
     let mut file = File::create(&config_path)?;
     let _ = file.write_all(toml_string.as_bytes());
-    // find a way to write to a .toml file
 
     Ok(config)
 }
