@@ -2,7 +2,7 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::{compress::{decompressor::DecompressionEngine, CompressionEngine, CompressionType}, utils::registry::{BackupEntry, BackupRegistry}};
+use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, utils::registry::{BackupEntry, BackupRegistry}};
 
 pub mod gc;
 pub mod registry;
@@ -17,28 +17,32 @@ pub enum SnapError {
     List,
 }
 
-/// Generate a compression engine from the config information provided.
+/// Generate a compression engine from the algorithm information provided.
 /// 
-/// If `config` is `None`, it means the user didn't provide an algorithm option
-///  in the command line and there is no entry for this in the registry.
+/// If `algorithm` is `None`, it means the user didn't provide an algorithm option
+///  in the command line and there is no entry for this in the registry. Therefore we will use default algorithm `gzip`.
 /// 
 /// If we still find nothing (this is the first backup for this path) we then look 
 /// through the local config folder for this definition and if it is still None
 /// then we look at the global config folder
-pub fn generate_compression_engine(config: Option<String>) -> (CompressionEngine, String) {
-    // look through local ./snapsafe.toml
-    // let local_snapsafe = 
+pub fn generate_compression_engine(algorithm: Option<String>) -> (CompressionEngine, String) {
+    let comp = if let None = algorithm {
+        "none".to_string()
+    }else {
+        algorithm.unwrap()
+    };
 
-    (CompressionEngine::new(CompressionType::Gzip, 6), config.unwrap())
+    let engine = compress::build_compress_engine(comp.clone()).unwrap();
+    (engine, comp)
 }
 
 
-/// Look through the registry for the path and obtain that entry information.
+/// Given the `algorithm` provided, build a decompression engine
 /// We will get to know the kind of algorithm the compression used.
 /// open to further refinement
-pub fn generate_decompression_engine(_config: String) -> DecompressionEngine {
+pub fn generate_decompression_engine(algorithm: String) -> DecompressionEngine {
 
-    DecompressionEngine::new(CompressionType::Gzip)
+    compress::build_decompression_engine(algorithm).unwrap()
 }
 
 pub fn clear_directory(path: &Path) -> io::Result<()> {
@@ -177,6 +181,10 @@ pub fn get_error(err: SnapError) -> io::Error {
     }
 }
 
+/// Remove a snapshot from the entry with the destination path (destination path is unique) 
+/// from the registry.
+/// 
+/// 
 pub fn remove_snapshot(registry: &BackupRegistry, dest: PathBuf) -> Option<BackupEntry> {
     let entry = registry.find_entry_from_dest(dest.to_path_buf());
     
