@@ -1,6 +1,8 @@
 use std::{collections::HashSet, fs::{self, File}, io::{self, Read, Write}, path::{Path, PathBuf}};
 
+use snapsafe::config::Config;
 use tempfile::{tempdir, NamedTempFile};
+
 
 pub fn get_password() -> String {
     String::from("password")
@@ -47,6 +49,10 @@ pub fn get_test_registry() -> String {
     let unique_path = unique_path.path();
 
     unique_path.to_string_lossy().to_string()
+}
+
+pub fn get_test_configs() -> Config {
+    todo!("Include a config definition for temp files to used in integration tests");
 }
 
 pub fn clear_test_registry(path: &str) {
