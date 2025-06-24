@@ -2,7 +2,7 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, utils::registry::{BackupEntry, BackupRegistry}};
+use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, config::{self, configs::Config}, utils::registry::{BackupEntry, BackupRegistry}};
 
 pub mod gc;
 pub mod registry;
@@ -84,6 +84,38 @@ pub fn get_registry() -> BackupRegistry {
                 .unwrap_or(bkup_registry);
 
     backup_registry
+}
+
+pub fn compare_password(entry: Option<&BackupEntry>, password_hash: &str, error: SnapError) -> io::Result<Option<String>> {
+    // strict no password change enforcement.
+    if let Some(ent) = entry {
+        if password_hash != ent.passsword_hash {
+            eprintln!("Destination password is different from the password you provided.");
+            let err = get_error(error);
+            return Err(err);
+        }
+
+        // use the compression algorithm on the BackupEntry even if it is different from the one 
+        // like single-enforcement of password, you cannot change the compression algorithm once
+        // it has been set.
+        // the user provided now. We use the same algorithm throughout when we compress a 
+        // given source -> destination
+        return Ok(Some(ent.compression_algorithm.clone()));
+    }
+
+    Ok(None)
+}
+
+pub fn get_config() -> Config {
+    let config = 
+        if let Ok(registry) = std::env::var("TEST_CONFIG") {
+            config::build_test_config(registry).unwrap()
+        }
+        else {
+            config::get_config().unwrap()
+        };
+
+    config
 }
 
 pub fn get_registry_path() -> String {
