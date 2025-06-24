@@ -1,9 +1,19 @@
 use std::{fs, io, path::{Path, PathBuf}};
 
-use crate::{actions::crypto, utils::{self, snapshot::Snapshot}};
+use crate::{actions::crypto, utils::{self, snapshot::Snapshot, SnapError}};
 
 pub fn delete_data(nth: usize, target: &Path) -> io::Result<()> {
     let password = utils::read_password();
+
+    let mut registry = utils::get_registry();
+    let entry = registry.find_entry_from_dest(target.to_path_buf());
+
+    let password_hash = utils::hash_password(&password);
+    let comp_from_entry = utils::compare_password(entry, &password_hash, SnapError::Delete);
+
+    if let Err(err) = comp_from_entry {
+        return Err(err);
+    }
 
     let salt = utils::get_salt(&target);
     let key = crypto::derive_key(&password, &salt);
@@ -56,7 +66,7 @@ pub fn delete_data(nth: usize, target: &Path) -> io::Result<()> {
             return Err(err);
         }
         
-        let mut registry = utils::get_registry();
+        
         if let Some(entry) = utils::remove_snapshot(&mut registry, target.to_path_buf()) {
             let _ = registry.add_backup(entry);
             let _ = registry.save_to_file();

@@ -8,7 +8,7 @@
 
 use std::{io, path::Path};
 
-use crate::{config::Config, crypto, utils};
+use crate::{config::configs::Config, crypto, utils};
 
 pub mod backup;
 pub mod delete;

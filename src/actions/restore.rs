@@ -21,6 +21,13 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> io::Result<()> {
     let mut registry = utils::get_registry();
     let entry = registry.find_entry_from_dest(src.to_path_buf());
 
+    let password_hash = utils::hash_password(&password);
+    let comp_from_entry = utils::compare_password(entry, &password_hash, SnapError::Restore);
+
+    if let Err(err) = comp_from_entry {
+        return Err(err);
+    }
+
     let comp = {
         if let Some(ent) = entry {
             ent.clone().compression_algorithm

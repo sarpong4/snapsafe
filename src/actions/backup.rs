@@ -1,6 +1,6 @@
 use std::{fs, io, path::Path};
 
-use crate::{actions::crypto, config::{build_global_config, Config}, utils::{self, registry::BackupEntry, snapshot::Snapshot}};
+use crate::{actions::crypto, config::{self, configs::Config}, utils::{self, registry::BackupEntry, snapshot::Snapshot, SnapError}};
 
 pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
     let password = utils::read_password();
@@ -10,7 +10,7 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
     if algorithm.is_none() && config.is_none() {
         // let us build a config
         println!("No config has been defined yet. \nWe will require you to build a Global one. \nPlease respond to the prompts...");
-        config = Some(build_global_config()?);
+        config = Some(config::build_global_config()?);
         let general_conf = config.as_ref().unwrap().general.clone();
         algorithm = Some(general_conf.compression);
         
@@ -35,22 +35,17 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
     let entry = registry.find_entry(src.to_path_buf(), dest.to_path_buf());
 
     let password_hash = utils::hash_password(&password);
+    let comp_from_entry = utils::compare_password(entry, &password_hash, SnapError::Backup);
 
-    // strict no password change enforcement.
-    if let Some(ent) = entry {
-        if password_hash != ent.passsword_hash {
-            eprintln!("Backup destination already initialized with a different password. You cannot backup to this destination with a different password");
-            let err = utils::get_error(utils::SnapError::Backup);
-            return Err(err);
+    if let Err(err) = comp_from_entry {
+        return Err(err);
+    }
+    else {
+        let coms = comp_from_entry.unwrap();
+        if let Some(_) = coms {
+            algorithm = coms;
         }
-
-        // use the compression algorithm on the BackupEntry even if it is different from the one 
-        // like single-enforcement of password, you cannot change the compression algorithm once
-        // it has been set.
-        // the user provided now. We use the same algorithm throughout when we compress a 
-        // given source -> destination
-        algorithm = Some(ent.compression_algorithm.clone()); 
-    };
+    }
 
 
 
