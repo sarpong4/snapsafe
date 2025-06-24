@@ -18,6 +18,7 @@ fn backup_n_times(n: usize, source: PathBuf, dest: PathBuf, registry: String) ->
         let mut cmd = Command::cargo_bin("snapsafe").unwrap();
         cmd.env("SNAPSAFE_PASSWORD", get_password())
             .env("SNAPSAFE_TEST_REGISTRY", &registry)
+            .env("TEST_CONFIG", &registry)
             .arg("backup")
             .arg("--source")
             .arg(&source)
@@ -44,6 +45,7 @@ fn test_cli_backup_ensures_strict_password_enforcement() {
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
     cmd.env("SNAPSAFE_PASSWORD", "wrong password")
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("backup")
         .arg("--source")
         .arg(source1)
@@ -52,7 +54,7 @@ fn test_cli_backup_ensures_strict_password_enforcement() {
 
     cmd.assert()
         .failure()
-        .stderr(contains("Backup destination already initialized with a different password."));
+        .stderr(contains("Destination password is different from the password you provided."));
 
     clear_test_registry(&registry);
 }
