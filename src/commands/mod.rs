@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 
-use crate::{actions, config::{build_global_config, build_local_config, get_config}, utils::{get_error, SnapError}};
+use crate::{actions, config::{build_global_config, build_local_config}, utils::{self, SnapError}};
 
 #[derive(Parser)]
 #[command(name = "snapshot", version = "1.0", about = "A secure backup and restore tool.", after_help = "Strict password enforcement:\n\
@@ -58,7 +58,7 @@ pub enum Commands {
 
 pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CLI::parse();
-    let config = get_config();
+    let config = Some(utils::get_config());
 
     match cli.command {
         Commands::Config { global: _, local } => {
@@ -80,7 +80,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
             if !src.exists() {
                 eprintln!("Source directory does not exist.");
-                let err = get_error(SnapError::Command);
+                let err = utils::get_error(SnapError::Command);
                 return Err(Box::new(err));
             }
 
@@ -95,7 +95,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
             if !src.exists() {
                 eprintln!("Directory with expected backed up data does not exist.");
-                let err = get_error(SnapError::Command);
+                let err = utils::get_error(SnapError::Command);
                 return Err(Box::new(err));
             }
 
@@ -115,7 +115,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
             
             if !target.try_exists().unwrap_or(false) {
                 eprintln!("Target Directory with expected backed up data does not exist");
-                let err = get_error(SnapError::Command);
+                let err = utils::get_error(SnapError::Command);
                 return Err(Box::new(err));
             }
 
