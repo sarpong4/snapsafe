@@ -1,6 +1,6 @@
 use std::{fs, io, path::Path};
 
-use crate::{actions::crypto, config::{self, configs::Config}, utils::{self, registry::BackupEntry, snapshot::Snapshot, SnapError}};
+use crate::{actions::crypto, config::{self, configs::Config}, utils::{self, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot, SnapError}};
 
 pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
     let password = utils::read_password();
@@ -47,6 +47,24 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
         }
     }
 
+    let mut garbage_info = if let Some(gl) = GarbageLimit::from_json_to_gc().ok(){
+        gl
+    }else {
+        GarbageLimit::new()
+    };
+
+    let gc_limit = config.unwrap().general.gc_limit;
+
+    let gc_path = blobs_dir.to_string_lossy().to_string();
+    let get_gc = garbage_info.get_gc_from_limit(gc_path);
+    
+
+    let mut gc = if let Some(gc) = get_gc {
+        gc.clone()
+    } else {
+        GarbageCollector::new(blobs_dir.clone(), gc_limit)
+    };
+
 
 
     // we need the latest json file if there is any
@@ -64,7 +82,9 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
         return Err(err);
     }
     let snap = snap?;
-    let _ = snap.save(&blobs_dir, &snapshot_dir)?;
+    let _ = snap.save(&snapshot_dir, &mut gc)?;
+    let _ = garbage_info.add_garbage_collector_to_limit(gc);
+    let _ = garbage_info.save();
 
     let entry = registry.find_entry(src.to_path_buf(), dest.to_path_buf());
 

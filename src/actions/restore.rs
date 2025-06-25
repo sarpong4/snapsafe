@@ -64,6 +64,10 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> io::Result<()> {
         for (path, file_entry) in snapshot_files {
             let hash_path = blobs_dir.join(&file_entry.hash);
 
+            if !hash_path.exists() {
+                
+            }
+
             let ciphertext = fs::read(&hash_path)?;
             let nonce_bytes = file_entry.nonce;
 
@@ -96,6 +100,11 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> io::Result<()> {
         else {
             let err = utils::get_error(utils::SnapError::Delete);
             eprintln!("Snapshot with backup path: {:?} does not exist.", src);
+            return Err(err);
+        }
+
+        if let Err(_) = fs::remove_file(snapshot_path) {
+            let err = utils::get_error(utils::SnapError::Restore);
             return Err(err);
         }
 
