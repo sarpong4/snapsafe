@@ -73,10 +73,10 @@ mod gc_tests {
         
         for h in hashes {
             File::create(blobs_dir.join(h)).unwrap();
-            gc.register_file(&PathBuf::from(path), h).unwrap();
+            gc.register_file(&PathBuf::from(path), h, &PathBuf::from(path)).unwrap();
         }
 
-        let current = gc.get_index().get(path).unwrap();
+        let current = gc.get_index().get(path).unwrap().iter().map(|f| f.hash_file.clone()).collect::<Vec<String>>();
         assert_eq!(current.len(), 3);
         assert_eq!(current, &["h4", "h3", "h2"]);
         assert!(!blobs_dir.join("h1").exists());
@@ -94,10 +94,10 @@ mod gc_tests {
 
         for h in hashes {
             File::create(blobs_dir.join(h)).unwrap();
-            gc.register_file(&PathBuf::from(path), h).unwrap();
+            gc.register_file(&PathBuf::from(path), h, &PathBuf::from(path)).unwrap();
         }
 
-        let current = gc.get_index().get(path).unwrap();
+        let current = gc.get_index().get(path).unwrap().iter().map(|f| f.hash_file.clone()).collect::<Vec<String>>();
         assert_eq!(current.len(), 1);
         assert_eq!(current, &["h1"]);
     }
