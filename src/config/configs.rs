@@ -22,7 +22,8 @@ pub struct Config {
 pub struct GeneralConfig {
     pub registry_dir: String,
     pub compression: String,
-    pub encryption: bool
+    pub encryption: bool,
+    pub gc_limit: usize
 }
 
 // pub struct SecurityConfig {
@@ -50,15 +51,17 @@ impl From<GeneralConfig> for Config {
     }
 }
 
-impl From<(String, String)> for GeneralConfig {
-    fn from(value: (String, String)) -> Self {
+impl From<(String, String, usize)> for GeneralConfig {
+    fn from(value: (String, String, usize)) -> Self {
         let registry = value.0;
         let comp = value.1;
+        let limit = value.2;
 
         Self {
             registry_dir: registry,
             compression: comp,
             encryption: true,
+            gc_limit: limit,
         }
     }
 }
@@ -82,23 +85,38 @@ impl Config {
 
 impl GeneralConfig {
     pub fn new() -> Option<Self> {
-        let registry = match config::get_registry_dir() {
+
+        println!("----------------------------");
+        println!("BUILDING GENERAL BACKUP/RESTORE CONFIG");
+        println!("-----------------------------\n");
+
+        let registry =  match config::get_registry_dir() {
             Some(dir) => dir,
             None => return None
         };
 
+
         let compression = match config::get_compression_type() {
             Some(comp) => comp,
             None => {
-                println!("Compression Algorithm set to None. You can change it with snapsafe --config");
+                println!("Compression Algorithm set to None. You can change it with snapsafe config --global or snapsafe config --local");
                 "none".to_string()
+            }
+        };
+
+        let gc_limit = match config::get_gc_limit() {
+            Some(limit) => limit,
+            None => {
+                println!("Version Limit for each file is set to 3. You can change it with snapsafe config --global or snapsafe config --local");
+                3
             }
         };
 
         Some(Self {
             registry_dir: registry,
             compression,
-            encryption: true
+            encryption: true,
+            gc_limit
         })
     }
 }

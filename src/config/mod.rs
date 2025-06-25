@@ -27,6 +27,31 @@ fn get_compression_type() -> Option<String> {
     Some(compression)
 }
 
+fn get_gc_limit() -> Option<usize> {
+     print!("Indicate the number of versions per file you want to save upon backup. Default is 3: ");
+    stdout().flush().unwrap();
+
+    let mut input = String::new();
+
+    let limit = match stdin().read_line(&mut input) {
+        Ok(_) => {
+            let response = input.trim();
+            if response.is_empty() {
+                return None
+            }
+            match response.parse::<usize>() {
+                Ok(val) => val,
+                Err(_) => return None,
+            }
+        }
+        Err(_) => {
+            return None
+        }
+    };
+
+    Some(limit)
+}
+
 fn get_registry_dir() -> Option<String> {
     print!("Provide your registry directory path or press D for default: ");
     stdout().flush().unwrap();
@@ -84,8 +109,9 @@ pub fn build_test_config(registry: String) -> io::Result<Config> {
     let config_path = test_dir.join("snapsafe.toml");
 
     let comp = "gzip";
+    let limit = 3;
 
-    let general = GeneralConfig::from((registry, comp.to_string()));
+    let general = GeneralConfig::from((registry, comp.to_string(), limit));
     let config = Config::from(general);
 
     let toml_string = toml::to_string_pretty(&config).expect("Serialization Failed");
