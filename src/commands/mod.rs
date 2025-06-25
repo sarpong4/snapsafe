@@ -19,10 +19,10 @@ pub enum Commands {
     /// generate the process to build a config file for your system.
     /// you have the option to build a local config and global config, add it to your command
     Config {
-        #[arg(short = 'g', required = false)]
+        #[arg(short = 'g', long, required = false)]
         global: bool,
-        #[arg(short = 'l', required = false)]
-        local: bool
+        #[arg(short = 'l', long, required = false)]
+        local: bool,
     },
     /// use this to create a backup of a folder in some destination folder: `snapsafe backup --help` for usage info
     Backup {
@@ -58,7 +58,6 @@ pub enum Commands {
 
 pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CLI::parse();
-    let config = Some(utils::get_config());
 
     match cli.command {
         Commands::Config { global: _, local } => {
@@ -83,6 +82,8 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 let err = utils::get_error(SnapError::Command);
                 return Err(Box::new(err));
             }
+
+            let config = Some(utils::get_config());
 
             if let Err(err) = actions::backup(src, dest, comp, config) {
                 return  Err(Box::new(err));
