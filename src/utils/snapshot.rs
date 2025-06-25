@@ -4,8 +4,7 @@ use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}, time::SystemTime};
 
-use crate::{compress::CompressionEngine, crypto};
-use crate::utils::gc;
+use crate::{compress::CompressionEngine, crypto, utils::{gc::GarbageCollector}};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Snapshot {
@@ -90,15 +89,15 @@ impl Snapshot {
         )
     }
 
-    pub fn save(&self, blobs_dir: &PathBuf, snapshot_dir: &Path) -> io::Result<()> {
+    pub fn save(&self, snapshot_dir: &Path, gc: &mut GarbageCollector) -> io::Result<()> {
         let safe_timestamp = self.timestamp.format("%Y-%m-%dT%H-%M-%S").to_string();
         let file_path = snapshot_dir.join(format!("{safe_timestamp}.json"));
 
-        let mut gc = gc::GarbageCollector::new(blobs_dir.clone(), 3);
+        // let mut gc = gc::GarbageCollector::new(blobs_dir.clone(), 3);
         
         if !&self.files.is_empty() {
-            for (file_path, file_entry) in &self.files {
-                gc.register_file(&file_path, &file_entry.hash)?;
+            for (path, file_entry) in &self.files {
+                gc.register_file(&path, &file_entry.hash, &file_path)?;
             }
 
             let mut file = fs::File::create(&file_path).expect("Failed to create snapshot file");
@@ -110,6 +109,14 @@ impl Snapshot {
         else {
             println!("Nothing to add to json, state did not change for any file");
         }
+
+        Ok(())
+    }
+
+    pub fn save_snapshot(&self, file_path: &Path) -> io::Result<()> {
+        let mut file = fs::File::create(file_path)?;
+        let json = serde_json::to_string_pretty(&self)?;
+        file.write_all(json.as_bytes())?;
 
         Ok(())
     }
