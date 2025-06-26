@@ -8,14 +8,19 @@
 
 use std::{io, path::Path};
 
-use crate::{config::configs::Config, crypto, utils};
+use crate::utils::{self, config::Config};
 
 pub mod backup;
+pub mod config;
 pub mod delete;
 pub mod restore;
 
 pub fn backup(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
     backup::backup_data(src, dest, comp, config)
+}
+
+pub fn config(local: bool) -> io::Result<()> {
+    config::generate_config(local)
 }
 
 pub fn restore(nth: u8, src: &Path, output_dir: &Path) -> io::Result<()> {

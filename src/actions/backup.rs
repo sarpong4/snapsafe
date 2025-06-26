@@ -1,25 +1,11 @@
 use std::{fs, io, path::Path};
 
-use crate::{actions::crypto, config::{self, configs::Config}, utils::{self, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot, SnapError}};
+use crate::{crypto, utils::{self, config::Config, config_utils, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot, SnapError}};
 
 pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
     let password = utils::read_password();
-    let mut algorithm = comp;
-    let mut config = config;
 
-    if algorithm.is_none() && config.is_none() {
-        // let us build a config
-        println!("No config has been defined yet. \nWe will require you to build a Global one. \nPlease respond to the prompts...");
-        config = Some(config::build_global_config()?);
-        let general_conf = config.as_ref().unwrap().general.clone();
-        algorithm = Some(general_conf.compression);
-        
-    }
-
-    if algorithm.is_none() {
-        let general_conf = config.as_ref().unwrap().general.clone();
-        algorithm = Some(general_conf.compression);
-    }
+    let (mut algorithm, config) = confirm_algorithm(comp, config);
 
     if !dest.exists() {
         fs::create_dir_all(&dest)?;
@@ -105,4 +91,26 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
     println!("Backup completed successfully");
 
     Ok(())
+}
+
+/// Given an algorithm and config, if the algorithm is `None` and the config is `None`, 
+/// build a global config and assign the compression on the config to the algorithm
+/// if only algorithm is `None`, assign the config's compression algorithm to `algorithm`
+pub fn confirm_algorithm(algorithm: Option<String>, config: Option<Config>) -> (Option<String>, Option<Config>) {
+    let mut algo = algorithm.clone();
+    let mut conf = config.clone();
+
+    if algorithm.is_none() && config.is_none() {
+        println!("No config has been defined yet. \nWe will require you to build a Global one. \nPlease respond to the prompts...");
+        conf = config_utils::build_global_config().ok();
+        let general_conf = conf.as_ref().unwrap().general.clone();
+        algo = Some(general_conf.compression);
+    }
+
+    if algorithm.is_none() {
+        let general_conf = &conf.as_ref().unwrap().general;
+        algo = Some(general_conf.compression.clone());
+    }
+
+    (algo, conf)
 }

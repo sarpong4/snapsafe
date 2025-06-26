@@ -1,6 +1,6 @@
 use std::{fs, io, path::{Path, PathBuf}};
 
-use crate::{actions::crypto, utils::{self, snapshot::Snapshot, SnapError}};
+use crate::{crypto, utils::{self, snapshot::Snapshot, SnapError}};
 
 pub fn delete_data(nth: usize, target: &Path) -> io::Result<()> {
     let password = utils::read_password();

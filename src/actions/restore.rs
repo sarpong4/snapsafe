@@ -1,6 +1,6 @@
 use std::{fs, io, path::{Path, PathBuf}};
 
-use crate::{actions::crypto, utils::{self, snapshot::Snapshot, SnapError}};
+use crate::{crypto, utils::{self, snapshot::Snapshot, SnapError}};
 
 /// Restore the nth version of a backup at the location: `src`
 /// Returns: `Ok(())` when successful or `Err` on any kind of failure.
