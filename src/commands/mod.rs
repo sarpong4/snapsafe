@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 
-use crate::{actions, config::{build_global_config, build_local_config}, utils::{self, SnapError}};
+use crate::{actions, utils::{self, SnapError}};
 
 #[derive(Parser)]
 #[command(name = "snapshot", version = "1.0", about = "A secure backup and restore tool.", after_help = "Strict password enforcement:\n\
@@ -61,11 +61,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         Commands::Config { global: _, local } => {
-            let conf_build = if local {
-                build_local_config()
-            } else {
-                build_global_config()
-            };
+            let conf_build = actions::config(local);
 
             if let Err(err) = conf_build {
                 return Err(Box::new(err));
