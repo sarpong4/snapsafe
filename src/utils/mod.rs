@@ -2,8 +2,10 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, config::{self, configs::Config}, utils::registry::{BackupEntry, BackupRegistry}};
+use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, utils::{config::Config, registry::{BackupEntry, BackupRegistry}}};
 
+pub mod config;
+pub mod config_utils;
 pub mod gc;
 pub mod registry;
 pub mod snapshot;
@@ -109,10 +111,10 @@ pub fn compare_password(entry: Option<&BackupEntry>, password_hash: &str, error:
 pub fn get_config() -> Config {
     let config = 
         if let Ok(registry) = std::env::var("TEST_CONFIG") {
-            config::build_test_config(registry).unwrap()
+            config_utils::build_test_config(registry).unwrap()
         }
         else {
-            config::get_config().unwrap()
+            config_utils::get_config().unwrap()
         };
 
     config
