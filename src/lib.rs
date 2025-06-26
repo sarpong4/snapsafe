@@ -1,7 +1,6 @@
 pub mod actions;
 pub mod commands;
 pub mod compress;
-pub mod config;
 pub mod utils;
 pub mod crypto;
 
