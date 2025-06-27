@@ -114,6 +114,15 @@ impl Snapshot {
     }
 
     pub fn save_snapshot(&self, file_path: &Path) -> io::Result<()> {
+        let parent = file_path.parent();
+
+        if parent.is_some() {
+            let parent = parent.unwrap();
+            if !parent.exists() {
+                let _ = fs::create_dir_all(parent);
+            }
+        }
+
         let mut file = fs::File::create(file_path)?;
         let json = serde_json::to_string_pretty(&self)?;
         file.write_all(json.as_bytes())?;

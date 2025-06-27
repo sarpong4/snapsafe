@@ -143,9 +143,7 @@ impl GarbageCollector {
 
                 snapshot.files = files;
 
-                snapshot.save_snapshot(&snap_path)?
-
-                
+                snapshot.save_snapshot(&snap_path)?;
             }
         }
 
