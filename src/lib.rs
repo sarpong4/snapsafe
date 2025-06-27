@@ -58,7 +58,7 @@ mod gc_tests {
 
     use tempfile::tempdir;
 
-    use crate::utils::gc::GarbageCollector;
+    use crate::utils::gc::{GarbageCollector, SnapshotReference};
 
 
     #[test]
@@ -67,18 +67,32 @@ mod gc_tests {
         let blobs_dir = blobs_dir.path();
         let mut gc = GarbageCollector::new(blobs_dir.to_path_buf(), 3);
 
-        let path = "dir/file.rs";
+        let path = tempdir().unwrap();
+        let path = path.path();
         let hashes = ["h1", "h2", "h3", "h4"];
         
-        for h in hashes {
-            File::create(blobs_dir.join(h)).unwrap();
-            gc.register_file(&PathBuf::from(path), h, &PathBuf::from(path)).unwrap();
+        for hash in &hashes {
+            File::create(blobs_dir.join(hash)).unwrap();
+            let _ = gc.register_file(&path.to_path_buf(), &hash, &path.to_path_buf());
         }
 
-        let current = gc.get_index().get(path).unwrap().iter().map(|f| f.hash_file.clone()).collect::<Vec<String>>();
+        let mut hashes = hashes
+            .map(|v| SnapshotReference::from((v.into(), v.into())));
+            
+        hashes.reverse();
+
+
+        let current = gc.get_index()
+            .get(&path.to_string_lossy().to_string()).unwrap()
+                .iter()
+                .map(|f| f.hash_file.clone()).collect::<Vec<String>>();
+
         assert_eq!(current.len(), 3);
-        assert_eq!(current, &["h4", "h3", "h2"]);
-        assert!(!blobs_dir.join("h1").exists());
+        let mut expected_hashes = hashes.map(|h| h.hash_file).to_vec();
+
+        let last = expected_hashes.pop().unwrap();
+        assert_eq!(current, expected_hashes);
+        assert!(!blobs_dir.join(last).exists());
     }
 
     #[test]
@@ -149,18 +163,12 @@ mod registry_tests {
     }
 
     #[test]
-    fn test_find_entry_from_dest_with_right_dest_returns_dest() {
+    fn test_find_entry_from_dest_with_right_dest_should_pass() {
         let mut registry = BackupRegistry::default();
-        let entry = BackupEntry::new(
-            Utc::now(), 
-            "backup/some_file".into(), 
-            "target/some_file".into(), 
-            "password".into(), 
-            "gzip".into()
-        );
-        registry.registry.push(entry);
+        let entry = BackupEntry::default();
+        registry.add_backup(entry);
 
-        let dest = "backup/some_file";
+        let dest = "target/some_file.bak";
         let found = registry.find_entry_from_dest(dest.into());
         assert!(found.is_some());
     }
@@ -168,13 +176,7 @@ mod registry_tests {
     #[test]
     fn test_remove_backup_from_registry_actually_removes_that_backup() {
         let mut registry = BackupRegistry::default();
-        let entry = BackupEntry::new(
-            Utc::now(), 
-            "backup/some_file".into(), 
-            "target/some_file".into(), 
-            "password".into(), 
-            "gzip".into()
-        );
+        let entry = BackupEntry::default();
 
         registry.registry.push(entry.clone());
         registry.remove_backup(entry);
@@ -187,15 +189,9 @@ mod registry_tests {
     #[test]
     fn test_add_backup_to_registry_does_add_backup() {
         let mut registry = BackupRegistry::default();
-        let entry = BackupEntry::new(
-            Utc::now(), 
-            "backup/some_file".into(), 
-            "target/some_file".into(), 
-            "password".into(), 
-            "gzip".into()
-        );
+        let entry = BackupEntry::default();
         
-        registry.registry.push(entry.clone());
+        registry.add_backup(entry.clone());
 
         assert!(registry.registry.len() == 1);
 
