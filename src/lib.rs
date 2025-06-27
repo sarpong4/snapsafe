@@ -103,10 +103,38 @@ mod gc_tests {
 }
 
 mod registry_tests {
+    use std::{fs, path::PathBuf};
+
     use chrono::Utc;
 
     use crate::utils::registry::{BackupEntry, BackupRegistry};
 
+    fn temp_registry_path() -> String {
+        let tmp = std::env::temp_dir().join(format!("snapsafe_test_{}", uuid::Uuid::new_v4()));
+        tmp.to_str().unwrap().to_string()
+    }
+
+    fn sample_entry() -> BackupEntry {
+        BackupEntry::new(
+            Utc::now(),
+            PathBuf::from("/tmp/source"),
+            PathBuf::from("/tmp/backup"),
+            "password_hash".to_string(),
+            "gzip".to_string(),
+        )
+    }
+
+    #[test]
+    fn test_backup_entry_new_and_snapshot_count() {
+        let mut entry = sample_entry();
+        assert_eq!(entry.snapshot_count, 1);
+
+        entry.add_snapshot();
+        assert_eq!(entry.snapshot_count, 2);
+
+        entry.remove_snapshot();
+        assert_eq!(entry.snapshot_count, 1);
+    }
 
     #[test]
     fn test_find_entry_from_dest_with_wrong_dest_is_none() {
@@ -176,4 +204,44 @@ mod registry_tests {
 
         assert!(registry.registry.len() == 2);
     } 
+
+    #[test]
+    fn test_backup_registry_save_and_load() {
+        let temp_path = temp_registry_path();
+        let mut reg = BackupRegistry::build_test_registy(temp_path.clone());
+        let entry = sample_entry();
+
+        reg.add_backup(entry.clone());
+        reg.save_to_file().unwrap();
+
+        let loaded = BackupRegistry::load_from_file(&reg.registry_path).unwrap();
+        assert_eq!(loaded.registry.len(), 1);
+        assert_eq!(loaded.registry[0].id, entry.id);
+
+        // Clean up
+        let _ = fs::remove_file(&reg.registry_path);
+        let _ = fs::remove_dir_all(PathBuf::from(temp_path));
+    }
+
+    #[test]
+    fn test_add_backup_replaces_existing() {
+        let mut reg = BackupRegistry::new();
+        let mut entry = sample_entry();
+        reg.add_backup(entry.clone());
+        assert_eq!(reg.registry.len(), 1);
+
+        entry.snapshot_count = 2;
+        reg.add_backup(entry.clone());
+        assert_eq!(reg.registry.len(), 1);
+        assert_eq!(reg.registry[0].snapshot_count, 2);
+    }
+
+    #[test]
+    fn test_add_backup_with_zero_snapshot_count() {
+        let mut reg = BackupRegistry::new();
+        let mut entry = sample_entry();
+        entry.snapshot_count = 0;
+        reg.add_backup(entry);
+        assert_eq!(reg.registry.len(), 0);
+    }
 }
