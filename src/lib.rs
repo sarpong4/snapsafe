@@ -102,8 +102,78 @@ mod gc_tests {
     }
 }
 
-mod snapshot_tests {
-}
-
 mod registry_tests {
+    use chrono::Utc;
+
+    use crate::utils::registry::{BackupEntry, BackupRegistry};
+
+
+    #[test]
+    fn test_find_entry_from_dest_with_wrong_dest_is_none() {
+
+        let mut registry = BackupRegistry::default();
+        let entry = BackupEntry::default();
+        registry.registry.push(entry);
+
+        let wrong_dest = "backup/other_file.bak";
+        let found = registry.find_entry_from_dest(wrong_dest.into());
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn test_find_entry_from_dest_with_right_dest_returns_dest() {
+        let mut registry = BackupRegistry::default();
+        let entry = BackupEntry::new(
+            Utc::now(), 
+            "backup/some_file".into(), 
+            "target/some_file".into(), 
+            "password".into(), 
+            "gzip".into()
+        );
+        registry.registry.push(entry);
+
+        let dest = "backup/some_file";
+        let found = registry.find_entry_from_dest(dest.into());
+        assert!(found.is_some());
+    }
+
+    #[test]
+    fn test_remove_backup_from_registry_actually_removes_that_backup() {
+        let mut registry = BackupRegistry::default();
+        let entry = BackupEntry::new(
+            Utc::now(), 
+            "backup/some_file".into(), 
+            "target/some_file".into(), 
+            "password".into(), 
+            "gzip".into()
+        );
+
+        registry.registry.push(entry.clone());
+        registry.remove_backup(entry);
+
+        let dest = "backup/some_file";
+        let found = registry.find_entry_from_dest(dest.into());
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn test_add_backup_to_registry_does_add_backup() {
+        let mut registry = BackupRegistry::default();
+        let entry = BackupEntry::new(
+            Utc::now(), 
+            "backup/some_file".into(), 
+            "target/some_file".into(), 
+            "password".into(), 
+            "gzip".into()
+        );
+        
+        registry.registry.push(entry.clone());
+
+        assert!(registry.registry.len() == 1);
+
+        let entry2 = BackupEntry::default();
+        registry.add_backup(entry2);
+
+        assert!(registry.registry.len() == 2);
+    } 
 }
