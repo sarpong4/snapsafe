@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Default, Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct BackupEntry {
     pub id: String,
     pub timestamp: DateTime<Utc>,
@@ -13,6 +13,20 @@ pub struct BackupEntry {
     pub passsword_hash: String,
     pub snapshot_count: usize,
     pub compression_algorithm: String,
+}
+
+impl Default for BackupEntry {
+    fn default() -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().into(),
+            timestamp: Utc::now(),
+            origin_path: "source/some_file.txt".into(),
+            backup_path: "target/some_file.bak".into(),
+            passsword_hash: "generic_password_hash".into(),
+            snapshot_count: 1,
+            compression_algorithm: "gzip".into()
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
