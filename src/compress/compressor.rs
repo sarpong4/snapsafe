@@ -1,11 +1,11 @@
-use std::io::{self, Write};
+use std::{io::{self, Write}, str::FromStr};
 
 use brotli2::{write::BrotliEncoder};
 use flate2::{write::{GzEncoder, ZlibEncoder}, Compression};
 use xz2::write::XzEncoder as LzmaEncoder;
 use zstd::stream::Encoder as ZstdEncoder;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CompressionType {
     None,
     Gzip,
@@ -18,6 +18,22 @@ pub enum CompressionType {
 pub struct CompressionEngine {
     algorithm: CompressionType,
     level: u32
+}
+
+impl FromStr for CompressionType {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input.to_lowercase().as_str() {
+            "none" => Ok(CompressionType::None),
+            "gzip" => Ok(CompressionType::Gzip),
+            "zlib" => Ok(CompressionType::Zlib),
+            "brotli" => Ok(CompressionType::Brotli),
+            "zstd" => Ok(CompressionType::Zstd),
+            "lzma" => Ok(CompressionType::Lzma),
+            _ => Err(()),
+        }
+    }
 }
 
 impl CompressionEngine {

@@ -19,6 +19,7 @@ fn backup_n_times(n: usize, source: PathBuf, dest: PathBuf, registry: String) ->
         let mut cmd = Command::cargo_bin("snapsafe").unwrap();
         cmd.env("SNAPSAFE_PASSWORD", get_password())
             .env("SNAPSAFE_TEST_REGISTRY", &registry)
+            .env("TEST_CONFIG", &registry)
             .arg("backup")
             .arg("--source")
             .arg(&source)
@@ -32,6 +33,7 @@ fn backup_n_times(n: usize, source: PathBuf, dest: PathBuf, registry: String) ->
     (source, dest)
 }
 
+// BACKUP COMMAND TESTS
 
 #[test]
 fn test_cli_backup_with_password() {
@@ -44,6 +46,7 @@ fn test_cli_backup_with_password() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("backup")
         .arg("--source")
         .arg(source)
@@ -65,6 +68,7 @@ fn test_cli_backup_without_source_directory() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("backup")
         .arg("--dest")
         .arg("/backup_target");
@@ -85,6 +89,7 @@ fn test_cli_backup_without_target_directory() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("backup")
         .arg("--source")
         .arg("/test_backup");
@@ -95,6 +100,8 @@ fn test_cli_backup_without_target_directory() {
     assert.failure()
         .stderr(contains("the following required arguments were not provided"));
 }
+
+// RESTORE COMMAND TESTS
 
 #[test]
 fn test_cli_restore_with_correct_password_but_no_data_has_been_backed_up_should_fail() {
@@ -107,6 +114,7 @@ fn test_cli_restore_with_correct_password_but_no_data_has_been_backed_up_should_
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("restore")
         .arg("--origin")
         .arg(origin.path())
@@ -131,6 +139,7 @@ fn test_cli_restore_with_incorrect_password_treated_as_no_backup_data() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("backup")
         .arg("--source")
         .arg(&source)
@@ -143,6 +152,7 @@ fn test_cli_restore_with_incorrect_password_treated_as_no_backup_data() {
 
     cmd2.env("SNAPSAFE_PASSWORD", "wrong password")
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("restore")
         .arg("--origin")
         .arg(&dest)
@@ -170,6 +180,7 @@ fn test_cli_restore_with_correct_password_after_successful_backup() {
 
     cmd2.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("restore")
         .arg("--number")
         .arg("1")
@@ -201,6 +212,7 @@ fn test_cli_restore_3rd_version_after_one_backup_treated_as_no_backup_data() {
 
     cmd2.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("restore")
         .arg("--number")
         .arg("3")
@@ -216,6 +228,8 @@ fn test_cli_restore_3rd_version_after_one_backup_treated_as_no_backup_data() {
         .stderr(contains("No data backup available"));
 }
 
+// DELETE COMMAND TESTS
+
 #[test]
 fn test_cli_delete_with_no_backup_data_should_fail() {
     let registry = get_test_registry();
@@ -227,6 +241,7 @@ fn test_cli_delete_with_no_backup_data_should_fail() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("delete")
         .arg("--origin")
         .arg(origin)
@@ -252,6 +267,7 @@ fn test_cli_delete_with_incorrect_password_should_fail() {
     cmd.env("SNAPSAFE_PASSWORD", "wrong_password")
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
         .arg("delete")
+        .env("TEST_CONFIG", &registry)
         .arg("--origin")
         .arg(dest)
         .arg("--force");
@@ -261,7 +277,7 @@ fn test_cli_delete_with_incorrect_password_should_fail() {
     clear_test_registry(&registry);
 
     assert.failure()
-        .stderr(contains("Failed to decrypt data"));
+        .stderr(contains("Destination password is different from the password you provided."));
 }
 
 #[test]
@@ -281,6 +297,7 @@ fn test_cli_delete_after_one_backup_should_pass() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("delete")
         .arg("--origin")
         .arg(&dest)
@@ -314,6 +331,7 @@ fn test_cli_delete_1st_version_after_3_backups_should_succeed() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("delete")
         .arg("--number")
         .arg("3")
@@ -349,6 +367,7 @@ fn test_cli_delete_3rd_version_after_1_backup_should_fail() {
 
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("delete")
         .arg("--number")
         .arg("3")
@@ -365,12 +384,15 @@ fn test_cli_delete_3rd_version_after_1_backup_should_fail() {
 
 }
 
+// LIST COMMAND TESTS
+
 #[test]
 fn test_cli_list_with_no_backups_should_print_nothing() {
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
     let registry = get_test_registry();
 
-    cmd.env("SNAPSAFE_TEST_REGISTRY", &registry).arg("list");
+    cmd.env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry).arg("list");
 
     cmd.assert().success().stdout(contains("No data has been backed up"));
 
@@ -386,7 +408,8 @@ fn test_cli_list_after_backup_should_print_information() {
     let (_, _) = backup_n_times(1, source.clone(), dest.clone(), registry.clone());
 
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
-    cmd.env("SNAPSAFE_TEST_REGISTRY", &registry).arg("list");
+    cmd.env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry).arg("list");
 
     let assert = cmd.assert();
 
@@ -406,6 +429,7 @@ fn test_cli_list_after_backup_and_delete_should_print_nothing() {
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("delete")
         .arg("--origin")
         .arg(dest1)
@@ -414,7 +438,8 @@ fn test_cli_list_after_backup_and_delete_should_print_nothing() {
     cmd.assert().success();
 
     let mut cmd2 = Command::cargo_bin("snapsafe").unwrap();
-    cmd2.env("SNAPSAFE_TEST_REGISTRY", &registry).arg("list");
+    cmd2.env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry).arg("list");
 
     let assert = cmd2.assert();
 
@@ -437,6 +462,7 @@ fn test_cli_list_after_backup_and_restore_should_print_nothing() {
     let mut cmd = Command::cargo_bin("snapsafe").unwrap();
     cmd.env("SNAPSAFE_PASSWORD", get_password())
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry)
         .arg("restore")
         .arg("--origin")
         .arg(&dest)
@@ -446,10 +472,19 @@ fn test_cli_list_after_backup_and_restore_should_print_nothing() {
     cmd.assert().success();
 
     let mut cmd2 = Command::cargo_bin("snapsafe").unwrap();
-    cmd2.env("SNAPSAFE_TEST_REGISTRY", &registry).arg("list");
+    cmd2.env("SNAPSAFE_TEST_REGISTRY", &registry)
+        .env("TEST_CONFIG", &registry).arg("list");
 
     let assert = cmd2.assert();
 
     clear_test_registry(&registry);
     assert.success().stdout(contains("No data has been backed up"));
 }
+
+// CONFIG TESTS
+
+#[test]
+fn test_global_config_builds_a_global_config_file() {}
+
+#[test]
+fn test_local_config_build_a_local_config_file() {}

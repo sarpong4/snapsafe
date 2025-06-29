@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 
-use crate::{actions, utils::{get_error, SnapError}};
+use crate::{actions, utils::{self, SnapError}};
 
 #[derive(Parser)]
 #[command(name = "snapshot", version = "1.0", about = "A secure backup and restore tool.", after_help = "Strict password enforcement:\n\
@@ -16,14 +16,22 @@ pub struct CLI {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// generate the process to build a config file for your system.
+    /// you have the option to build a local config and global config, add it to your command
+    Config {
+        #[arg(short = 'g', long, required = false)]
+        global: bool,
+        #[arg(short = 'l', long, required = false)]
+        local: bool,
+    },
     /// use this to create a backup of a folder in some destination folder: `snapsafe backup --help` for usage info
     Backup {
         #[arg(short = 's', long = "source", required = true)]
         source: String, 
         #[arg(short = 'd', long = "dest", required = true)]
         target: String,
-        #[arg(short = 'c', long = "config", required = false)]
-        config: Option<String>
+        #[arg(short = 'c', long = "comp", required = false)]
+        comp: Option<String>
     },
     /// use this to restore backup at a certain origin to an output directory: `snapsafe restore --help` for usage info
     Restore {
@@ -52,17 +60,28 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CLI::parse();
 
     match cli.command {
-        Commands::Backup { source, target,  config} => {
+        Commands::Config { global: _, local } => {
+            let conf_build = actions::config(local);
+
+            if let Err(err) = conf_build {
+                return Err(Box::new(err));
+            }
+
+            return Ok(());
+        },
+        Commands::Backup { source, target,  comp} => {
             let src = Path::new(&source);
             let dest = Path::new(&target);
 
             if !src.exists() {
                 eprintln!("Source directory does not exist.");
-                let err = get_error(SnapError::Command);
+                let err = utils::get_error(SnapError::Command);
                 return Err(Box::new(err));
             }
 
-            if let Err(err) = actions::backup(src, dest, config) {
+            let config = Some(utils::get_config());
+
+            if let Err(err) = actions::backup(src, dest, comp, config) {
                 return  Err(Box::new(err));
             }
             return Ok(());
@@ -73,7 +92,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
             if !src.exists() {
                 eprintln!("Directory with expected backed up data does not exist.");
-                let err = get_error(SnapError::Command);
+                let err = utils::get_error(SnapError::Command);
                 return Err(Box::new(err));
             }
 
@@ -93,7 +112,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
             
             if !target.try_exists().unwrap_or(false) {
                 eprintln!("Target Directory with expected backed up data does not exist");
-                let err = get_error(SnapError::Command);
+                let err = utils::get_error(SnapError::Command);
                 return Err(Box::new(err));
             }
 

@@ -12,6 +12,21 @@ pub struct BackupEntry {
     pub backup_path: PathBuf,
     pub passsword_hash: String,
     pub snapshot_count: usize,
+    pub compression_algorithm: String,
+}
+
+impl Default for BackupEntry {
+    fn default() -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().into(),
+            timestamp: Utc::now(),
+            origin_path: "source/some_file.txt".into(),
+            backup_path: "target/some_file.bak".into(),
+            passsword_hash: "generic_password_hash".into(),
+            snapshot_count: 1,
+            compression_algorithm: "gzip".into()
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -21,7 +36,7 @@ pub struct BackupRegistry {
 }
 
 impl BackupEntry {
-    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: String) -> Self {
+    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: String, compression: String) -> Self {
         let id = Uuid::new_v4().to_string();
 
         Self { 
@@ -30,7 +45,8 @@ impl BackupEntry {
             origin_path: src, 
             backup_path: target, 
             passsword_hash: password, 
-            snapshot_count: 1 
+            snapshot_count: 1,
+            compression_algorithm: compression,
         }
     }
 
@@ -80,6 +96,10 @@ impl BackupRegistry {
         })
     }
 
+    /// Given a destination path, `dest`, find the entry saved in the registry
+    /// 
+    /// Note: Destination path is always unique, when a backup is made to that path from source,
+    /// the idea is that you cannot make another backup to that path.
     pub fn find_entry_from_dest(&self, dest: PathBuf) -> Option<&BackupEntry> {
         self.registry.iter().find(|en| {
             en.backup_path == dest
@@ -89,7 +109,7 @@ impl BackupRegistry {
     pub fn load_from_file(path: &PathBuf) -> io::Result<Self> {
 
         if !path.exists() {
-            return Ok(BackupRegistry::default());
+            fs::File::create(path)?;
         }
 
         let data = fs::read_to_string(path)?;

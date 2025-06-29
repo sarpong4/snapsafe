@@ -205,6 +205,91 @@ Each of the above examples prompts the user for their password. [Part 1](PART1.m
 
 ---
 
+## Reliability & Failure Modes
+
+SnapSafe is designed to be resilient against common risks in backup systems, including partial state, corruption, and inconsistent behavior.
+
+### 1. File Corruption & Crashes
+
+**Concern:** If the system crashes during backup, can it leave a corrupted snapshot?
+
+**Mitigation:**
+
+- Snapshots are atomic: either the entire snapshot is written successfully, or it is not written at all.
+- Snapshots are written to a **staging directory** and only moved into the final location once all files are written and validated.
+- Incomplete snapshots are automatically detected and cleaned on startup.
+- Manifest includes hash for each file — used to validate post-write integrity.
+
+### 2. Encryption Correctness
+
+**Concern:** One wrong byte makes restoration impossible.
+
+**Mitigation:**
+
+- Each snapshot manifest is encrypted with a user-provided password.
+- The password is used to derive a key via **Argon2id** (or PBKDF2).
+- The manifest includes metadata about the encryption method and checksum.
+- Encrypted payloads use **AES-GCM**, which provides both encryption and authentication (integrity check).
+- If decryption fails due to tampering or corruption, the operation aborts.
+- Each snapshot can optionally include a checksum of the decrypted manifest for additional validation.
+
+### 3. Chunking Logic (For Future Deduplication)
+
+**Concern:** Inconsistent chunk boundaries break deduplication.
+
+**Mitigation:**
+
+- Chunking is not yet implemented, but future designs will ensure deterministic chunking.
+- Chunking logic will be clearly defined and deterministic (e.g., Rabin fingerprinting or fixed-size blocks).
+- For now, full-file snapshot is used, but the design is chunk-aware.
+- Tests will cover round-trip chunking + re-chunking stability.
+
+### 4. Restore Safety
+
+**Concern:** What happens if restore fails halfway?
+
+**Mitigation:**
+
+- Restores are designed to be atomic: either the entire restore completes successfully, or it does not.
+- Restore is done into a **temporary directory** and only moved to final target if fully successful.
+- If restore fails, the partial directory is deleted or left isolated with a `.failed` suffix.
+- Future versions may support atomic overlay restores or journaling.
+
+### 5. Idempotent Behavior
+
+**Concern:** Re-running a backup should not re-process unchanged files.
+
+**Mitigation (Planned):**
+
+- SnapSafe will implement a version diffing mechanism to detect changes.
+- Files will be compared against the last snapshot to determine if they need re-processing.
+- Files will be hashed before processing.
+- If snapshot metadata matches previous snapshot, file reuse will be skipped.
+- Configurable deduplication based on file content hash.
+
+### 6. Metadata Integrity
+
+**Concern:** What if `.snapsafe/registry.json` is corrupted?
+
+**Mitigation (Planned):**
+
+- Metadata is stored in a separate file (`backup_registry.json`) within each snapshot directory.
+- Each snapshot directory contains its own manifest, which is self-contained.
+- Metadata is versioned and backed up within each snapshot directory (`manifest.json`).
+- If the main index is lost, SnapSafe can reconstruct metadata by scanning snapshot folders.
+- Each manifest is self-describing and independent.
+
+### 7. User Error Prevention
+
+**Concern:** Users accidentally deleting snapshots or restoring wrong versions.
+
+**Mitigation:**
+
+- Commands require explicit confirmation for destructive actions (e.g., `--force` flag).
+- SnapSafe will prompt for confirmation before deleting snapshots.
+- Restores will require the user to specify the exact version or origin directory.
+- SnapSafe will provide a `--dry-run` option to simulate actions without making changes. (future)
+
 ## Future Work
 
 - **Diff-based Incremental Backups**

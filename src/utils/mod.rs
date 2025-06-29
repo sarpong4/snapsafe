@@ -2,40 +2,49 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::{compress::{decompressor::DecompressionEngine, CompressionEngine, CompressionType}, utils::registry::{BackupEntry, BackupRegistry}};
+use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, utils::{config::Config, registry::{BackupEntry, BackupRegistry}}};
 
+pub mod config;
+pub mod config_utils;
 pub mod gc;
 pub mod registry;
 pub mod snapshot;
 
 pub enum SnapError {
     Command,
+    Config,
     Backup,
     Restore,
     Delete,
     List,
 }
 
-/// Generate a compression engine from the config information provided.
+/// Generate a compression engine from the algorithm information provided.
 /// 
-/// If `config` is `None`, it means the user didn't provide an algorithm option
-///  in the command line and there is no entry for this in the registry.
+/// If `algorithm` is `None`, it means the user didn't provide an algorithm option
+///  in the command line and there is no entry for this in the registry. Therefore we will use default algorithm `gzip`.
 /// 
 /// If we still find nothing (this is the first backup for this path) we then look 
 /// through the local config folder for this definition and if it is still None
 /// then we look at the global config folder
-pub fn generate_compression_engine(_config: Option<String>) -> CompressionEngine {
+pub fn generate_compression_engine(algorithm: Option<String>) -> (CompressionEngine, String) {
+    let comp = if let None = algorithm {
+        "none".to_string()
+    }else {
+        algorithm.unwrap()
+    };
 
-    CompressionEngine::new(CompressionType::Gzip, 6)
+    let engine = compress::build_compress_engine(comp.clone()).unwrap();
+    (engine, comp)
 }
 
 
-/// Look through the registry for the path and obtain that entry information.
+/// Given the `algorithm` provided, build a decompression engine
 /// We will get to know the kind of algorithm the compression used.
 /// open to further refinement
-pub fn generate_decompression_engine(_config: String) -> DecompressionEngine {
+pub fn generate_decompression_engine(algorithm: String) -> DecompressionEngine {
 
-    DecompressionEngine::new(CompressionType::Gzip)
+    compress::build_decompression_engine(algorithm).unwrap()
 }
 
 pub fn clear_directory(path: &Path) -> io::Result<()> {
@@ -77,6 +86,46 @@ pub fn get_registry() -> BackupRegistry {
                 .unwrap_or(bkup_registry);
 
     backup_registry
+}
+
+pub fn compare_password(entry: Option<&BackupEntry>, password_hash: &str, error: SnapError) -> io::Result<Option<String>> {
+    // strict no password change enforcement.
+    if let Some(ent) = entry {
+        if password_hash != ent.passsword_hash {
+            eprintln!("Destination password is different from the password you provided.");
+            let err = get_error(error);
+            return Err(err);
+        }
+
+        // use the compression algorithm on the BackupEntry even if it is different from the one 
+        // like single-enforcement of password, you cannot change the compression algorithm once
+        // it has been set.
+        // the user provided now. We use the same algorithm throughout when we compress a 
+        // given source -> destination
+        return Ok(Some(ent.compression_algorithm.clone()));
+    }
+
+    Ok(None)
+}
+
+pub fn get_config() -> Config {
+    let config = 
+        if let Ok(registry) = std::env::var("TEST_CONFIG") {
+            config_utils::build_test_config(registry).unwrap()
+        }
+        else {
+            config_utils::get_config().unwrap()
+        };
+
+    config
+}
+
+pub fn get_registry_path() -> String {
+    get_registry().registry_path.to_string_lossy().to_string()
+}
+
+pub fn generate_registry(path: String) -> BackupRegistry {
+    BackupRegistry::load_from_file(&PathBuf::from(path)).unwrap()
 }
 
 pub fn hash_password(pw: &str) -> String {
@@ -144,6 +193,13 @@ pub fn get_error(err: SnapError) -> io::Error {
                 "An error occured before the command could execute"
             )
         },
+        SnapError::Config => {
+            eprintln!("Config Build Aborted");
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "An error occured before the config process could complete"
+            )
+        },
         SnapError::Backup => {
             eprintln!("Backup Aborted!");
             io::Error::new(
@@ -159,6 +215,10 @@ pub fn get_error(err: SnapError) -> io::Error {
     }
 }
 
+/// Remove a snapshot from the entry with the destination path (destination path is unique) 
+/// from the registry.
+/// 
+/// 
 pub fn remove_snapshot(registry: &BackupRegistry, dest: PathBuf) -> Option<BackupEntry> {
     let entry = registry.find_entry_from_dest(dest.to_path_buf());
     
