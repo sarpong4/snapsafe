@@ -4,13 +4,15 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::crypto::password::Password;
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct BackupEntry {
     pub id: String,
     pub timestamp: DateTime<Utc>,
     pub origin_path: PathBuf,
     pub backup_path: PathBuf,
-    pub passsword_hash: String,
+    pub passsword: Password,
     pub snapshot_count: usize,
     pub compression_algorithm: String,
 }
@@ -22,7 +24,7 @@ impl Default for BackupEntry {
             timestamp: Utc::now(),
             origin_path: "source/some_file.txt".into(),
             backup_path: "target/some_file.bak".into(),
-            passsword_hash: "generic_password_hash".into(),
+            passsword: Password::default(),
             snapshot_count: 1,
             compression_algorithm: "gzip".into()
         }
@@ -36,7 +38,7 @@ pub struct BackupRegistry {
 }
 
 impl BackupEntry {
-    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: String, compression: String) -> Self {
+    pub fn new(timestamp: DateTime<Utc>, src: PathBuf, target: PathBuf, password: &Password, compression: String) -> Self {
         let id = Uuid::new_v4().to_string();
 
         Self { 
@@ -44,7 +46,7 @@ impl BackupEntry {
             timestamp, 
             origin_path: src, 
             backup_path: target, 
-            passsword_hash: password, 
+            passsword: password.clone(), 
             snapshot_count: 1,
             compression_algorithm: compression,
         }

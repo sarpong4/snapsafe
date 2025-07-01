@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}, time::SystemTime};
 
-use crate::{compress::CompressionEngine, crypto, utils::{gc::GarbageCollector}};
+use crate::{compress::CompressionEngine, crypto, utils::{error::SnapError, gc::GarbageCollector}};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Snapshot {
@@ -21,7 +21,7 @@ pub struct FileEntry {
 }
 
 impl Snapshot {
-    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>, engine: CompressionEngine) -> io::Result<Self> {
+    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>, engine: CompressionEngine) -> Result<Self, SnapError> {
         let mut files = HashMap::<PathBuf, FileEntry>::new();
         let mut old_files = HashMap::<PathBuf, FileEntry>::new();
 
@@ -75,10 +75,7 @@ impl Snapshot {
         }
 
         if files.is_empty() {
-            let err = io::Error::new(
-                io::ErrorKind::InvalidData, 
-                format!("No File changes and hence backup aborted."));
-            return Err(err);
+            return Err(SnapError::CommandError("No File changes and hence backup aborted.".to_string()));
         }
         else {
             files.extend(old_files);
