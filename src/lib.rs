@@ -121,7 +121,7 @@ mod registry_tests {
 
     use chrono::Utc;
 
-    use crate::utils::registry::{BackupEntry, BackupRegistry};
+    use crate::{crypto::password, utils::registry::{BackupEntry, BackupRegistry}};
 
     fn temp_registry_path() -> String {
         let tmp = std::env::temp_dir().join(format!("snapsafe_test_{}", uuid::Uuid::new_v4()));
@@ -133,7 +133,7 @@ mod registry_tests {
             Utc::now(),
             PathBuf::from("/tmp/source"),
             PathBuf::from("/tmp/backup"),
-            "password_hash".to_string(),
+            &password::Password::default(),
             "gzip".to_string(),
         )
     }
@@ -240,4 +240,15 @@ mod registry_tests {
         reg.add_backup(entry);
         assert_eq!(reg.registry.len(), 0);
     }
+}
+
+mod password_tests {
+    #[test]
+    fn test_password_roundtrip(){}
+
+    #[test]
+    fn test_invalid_format(){}
+
+    #[test]
+    fn test_valid(){}
 }
