@@ -1,11 +1,25 @@
-use std::{fs, io, path::Path};
+use std::{fs, path::Path};
 
-use crate::{crypto, utils::{self, config::Config, config_utils, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot, SnapError}};
+use crate::{crypto::{self, password}, utils::{self, config::Config, config_utils, error::SnapError, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot}};
 
-pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
-    let password = utils::read_password();
+pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> Result<(), SnapError> {
+    let password = utils::read_password()?;
 
-    let (mut algorithm, config) = confirm_algorithm(comp, config);
+    let mut registry = utils::get_registry();
+    let entry = registry.find_entry(src.to_path_buf(), dest.to_path_buf());
+
+    let validated_password = if let Some(ent) = entry {
+        let prev_password = &ent.passsword;
+        if let Err(err) =  prev_password.verify(&password) {
+            return Err(SnapError::Password(err));
+        } else {
+            prev_password
+        }
+    }else {
+        &password::Password::new(password, &password::PasswordPolicy::default())?
+    };
+
+    let (algorithm, config) = confirm_algorithm(comp, config);
 
     if !dest.exists() {
         fs::create_dir_all(&dest)?;
@@ -16,22 +30,6 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
 
     fs::create_dir_all(&blobs_dir)?;
     fs::create_dir_all(&snapshot_dir)?;
-
-    let mut registry = utils::get_registry();
-    let entry = registry.find_entry(src.to_path_buf(), dest.to_path_buf());
-
-    let password_hash = utils::hash_password(&password);
-    let comp_from_entry = utils::compare_password(entry, &password_hash, SnapError::Backup);
-
-    if let Err(err) = comp_from_entry {
-        return Err(err);
-    }
-    else {
-        let coms = comp_from_entry.unwrap();
-        if let Some(_) = coms {
-            algorithm = coms;
-        }
-    }
 
     let mut garbage_info = if let Some(gl) = GarbageLimit::from_json_to_gc().ok(){
         gl
@@ -59,7 +57,7 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
                 .map(|path| std::path::PathBuf::from(path));
 
     let salt = utils::get_salt(&dest);
-    let key = crypto::derive_key(&password, &salt);
+    let key = crypto::derive_key(&validated_password.hash, &salt);
     let (engine, compression) = utils::generate_compression_engine(algorithm);
     let snap = Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref(), engine);
     
@@ -82,7 +80,7 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
         ent = en.clone();
     }
     else {
-        ent = BackupEntry::new(snap.timestamp, src.to_path_buf(), dest.to_path_buf(), password_hash, compression);
+        ent = BackupEntry::new(snap.timestamp, src.to_path_buf(), dest.to_path_buf(), &validated_password, compression);
     }
 
     let _ = registry.add_backup(ent);
