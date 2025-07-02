@@ -17,7 +17,6 @@ use crate::{crypto, utils::{self, error::SnapError, snapshot::Snapshot}};
 /// The `output_dir` is where the final files will be written to.
 pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapError> {
     let password = utils::read_password()?;
-    let mut algorithm = None;
 
     let mut registry = utils::get_registry();
     let entry = registry.find_entry_from_dest(src.to_path_buf());
@@ -30,12 +29,12 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
         }else if let Ok(false) = verify {
             return Err(SnapError::Password(crypto::password::PasswordError::IncorrectPassword));
         }
-        ent.compression_algorithm
+        ent.compression_algorithm.clone()
     }else {
         return Err(SnapError::Restore);
     };
 
-    let engine = utils::generate_decompression_engine(algorithm.unwrap());
+    let engine = utils::generate_decompression_engine(algorithm);
 
 
     if !output_dir.try_exists().unwrap_or(false) {
