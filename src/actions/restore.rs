@@ -22,8 +22,7 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
     let mut registry = utils::get_registry();
     let entry = registry.find_entry_from_dest(src.to_path_buf());
 
-    if let Some(ent) = entry {
-        algorithm = Some(ent.compression_algorithm.clone());
+    let algorithm = if let Some(ent) = entry {
         let backup_password = &ent.password;
         let verify = backup_password.verify(&password);
         if let Err(err) = verify {
@@ -31,10 +30,10 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
         }else if let Ok(false) = verify {
             return Err(SnapError::Password(crypto::password::PasswordError::IncorrectPassword));
         }
-    }
-    else {
+        ent.compression_algorithm
+    }else {
         return Err(SnapError::Restore);
-    }
+    };
 
     let engine = utils::generate_decompression_engine(algorithm.unwrap());
 
