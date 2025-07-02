@@ -2,9 +2,10 @@ use std::{io, error};
 
 use crate::crypto::password::PasswordError;
 
+#[derive(Debug)]
 pub enum SnapError {
     CommandError(String),
-    Config,
+    Config(String),
     Backup,
     Restore,
     Delete,
@@ -48,8 +49,8 @@ pub fn get_error(err: SnapError) -> io::Error {
                             "An error occured before the command could complete execution"
                         )
             },
-        SnapError::Config => {
-                eprintln!("Config Build Aborted");
+        SnapError::Config(msg) => {
+                eprintln!("Config Build Aborted: {msg}");
                 io::Error::new(
                     io::ErrorKind::InvalidData,
                     "An error occured before the config process could complete"

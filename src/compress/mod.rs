@@ -1,4 +1,3 @@
-use std::io;
 use std::str::FromStr;
 
 pub mod compressor;
@@ -6,7 +5,7 @@ pub mod decompressor;
 
 pub use compressor::{CompressionType, CompressionEngine};
 
-use crate::{compress::decompressor::DecompressionEngine, utils::{self, SnapError}};
+use crate::{compress::decompressor::DecompressionEngine, utils::error::SnapError};
 
 // algorithm levels
 // gzip/zlib -> use default (6)
@@ -23,7 +22,7 @@ fn get_algorithm_levels(algo: &CompressionType) -> u32 {
     }
 }
 
-pub fn build_compress_engine(comp: String) -> io::Result<CompressionEngine> {
+pub fn build_compress_engine(comp: String) -> Result<CompressionEngine, SnapError> {
     // parse config according to overriding definition:
     // check if it is part of the command line arguments first
     // if not check global config file if none
@@ -35,25 +34,25 @@ pub fn build_compress_engine(comp: String) -> io::Result<CompressionEngine> {
         return Err(err);
     }
 
-    let algo = algo.unwrap();
+    let algo = algo.ok().unwrap();
     let level = get_algorithm_levels(&algo);
 
     Ok(CompressionEngine::new(algo, level))
 }
 
-pub fn get_compression_type(comp: String) -> io::Result<CompressionType> {
+pub fn get_compression_type(comp: String) -> Result<CompressionType, SnapError> {
     let compression_type = CompressionType::from_str(comp.as_str());
 
     if let Err(_) = compression_type {
-        let err = utils::get_error(SnapError::Config);
-        eprintln!("Defined algorithm choice unavailble");
+        let message = "Defined algorithm choice unavailble";
+        let err = SnapError::Config(message.into());
         return Err(err);
     }
 
     Ok(compression_type.unwrap())
 }
 
-pub fn build_decompression_engine(comp: String) -> io::Result<DecompressionEngine> {
+pub fn build_decompression_engine(comp: String) -> Result<DecompressionEngine, SnapError> {
 
     let algo = get_compression_type(comp);
 
@@ -61,7 +60,7 @@ pub fn build_decompression_engine(comp: String) -> io::Result<DecompressionEngin
         return Err(err);
     }
 
-    let algo = algo.unwrap();
+    let algo = algo.ok().unwrap();
 
     Ok(DecompressionEngine::new(algo))
 }

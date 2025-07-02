@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 
-use crate::{actions, utils::{self, SnapError}};
+use crate::{actions, utils::{self, error::{self, SnapError}}};
 
 #[derive(Parser)]
 #[command(name = "snapshot", version = "1.0", about = "A secure backup and restore tool.", after_help = "Strict password enforcement:\n\
@@ -74,14 +74,14 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
             let dest = Path::new(&target);
 
             if !src.exists() {
-                eprintln!("Source directory does not exist.");
-                let err = utils::get_error(SnapError::Command);
+                let err = error::get_error(SnapError::CommandError("Source directory does not exist".into()));
                 return Err(Box::new(err));
             }
 
             let config = Some(utils::get_config());
 
             if let Err(err) = actions::backup(src, dest, comp, config) {
+                let err = error::get_error(err);
                 return  Err(Box::new(err));
             }
             return Ok(());
@@ -91,8 +91,8 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
             let output_dir = Path::new(&target);
 
             if !src.exists() {
-                eprintln!("Directory with expected backed up data does not exist.");
-                let err = utils::get_error(SnapError::Command);
+                let message = "Directory with expected backed up data does not exist.";
+                let err = error::get_error(SnapError::CommandError(message.into()));
                 return Err(Box::new(err));
             }
 
@@ -103,6 +103,7 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             if let Err(err) = restore_return {
+                let err = error::get_error(err);
                 return Err(Box::new(err))
             }
             return Ok(());
@@ -111,14 +112,15 @@ pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
             let target = Path::new(&origin);
             
             if !target.try_exists().unwrap_or(false) {
-                eprintln!("Target Directory with expected backed up data does not exist");
-                let err = utils::get_error(SnapError::Command);
+                let message = "Target Directory with expected backed up data does not exist";
+                let err = error::get_error(SnapError::CommandError(message.into()));
                 return Err(Box::new(err));
             }
 
             let delete_return = 
                 actions::delete(number.unwrap_or(1), target, force);
             if let Err(err) = delete_return {
+                let err = error::get_error(err);
                 return Err(Box::new(err))
             }
             return Ok(());

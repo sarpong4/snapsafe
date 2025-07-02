@@ -3,11 +3,10 @@
 // get configurations
 
 use core::convert::From;
-use std::io;
 
 use serde::{Deserialize, Serialize};
 
-use crate::utils::{self, config_utils, SnapError};
+use crate::utils::{config_utils, error::SnapError};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -67,13 +66,13 @@ impl From<(String, String, usize)> for GeneralConfig {
 }
 
 impl Config {
-    pub fn new() -> io::Result<Self> {
+    pub fn new() -> Result<Self, SnapError> {
         let general = GeneralConfig::new();
 
         if general.is_none() {
             println!("An invalid registry path was provided. Please provide a correct one");
             println!("Restart the config process: snapsafe config");
-            let err = utils::get_error(SnapError::Config);
+            let err = SnapError::Config("An invalid registry path was provided.".into());
             return Err(err);
         }
 

@@ -25,13 +25,12 @@ impl FromStr for CompressionType {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input.to_lowercase().as_str() {
-            "none" => Ok(CompressionType::None),
             "gzip" => Ok(CompressionType::Gzip),
             "zlib" => Ok(CompressionType::Zlib),
             "brotli" => Ok(CompressionType::Brotli),
             "zstd" => Ok(CompressionType::Zstd),
             "lzma" => Ok(CompressionType::Lzma),
-            _ => Err(()),
+            "none" | _ => Ok(CompressionType::None),
         }
     }
 }

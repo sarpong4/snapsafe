@@ -8,14 +8,14 @@
 
 use std::{io, path::Path};
 
-use crate::utils::{self, config::Config};
+use crate::utils::{self, config::Config, error::SnapError};
 
 pub mod backup;
 pub mod config;
 pub mod delete;
 pub mod restore;
 
-pub fn backup(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> io::Result<()> {
+pub fn backup(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> Result<(), SnapError> {
     backup::backup_data(src, dest, comp, config)
 }
 
@@ -23,12 +23,12 @@ pub fn config(local: bool) -> io::Result<()> {
     config::generate_config(local)
 }
 
-pub fn restore(nth: u8, src: &Path, output_dir: &Path) -> io::Result<()> {
+pub fn restore(nth: u8, src: &Path, output_dir: &Path) -> Result<(), SnapError> {
     let nth = (nth - 1) as usize;
     restore::restore(nth, src, output_dir)
 }
 
-pub fn delete(nth: u8, target: &Path, force: bool) -> io::Result<()> {
+pub fn delete(nth: u8, target: &Path, force: bool) -> Result<(), SnapError> {
     // DO YOU REALLY WANT TO DELETE?
     let delete_confirm = if !force {
         let input = utils::prompt_for_input("Are you sure you want to permanently delete this backup? [y/N] ");

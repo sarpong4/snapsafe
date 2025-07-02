@@ -1,7 +1,7 @@
 use core::convert::From;
 use std::{fs::{self, File}, io::{self, stdin, stdout, Write}, path::PathBuf};
 
-use crate::utils::{self, config::{Config, GeneralConfig}};
+use crate::utils::{self, config::{Config, GeneralConfig}, error::SnapError};
 
 pub fn get_compression_type() -> Option<String> {
     print!("Provide the compression algorithm you prefer [gzip, zlib, brotli, zstd, lzma]: ");
@@ -77,7 +77,7 @@ pub fn get_registry_dir() -> Option<String> {
     }
 }
 
-pub fn build_global_config() -> io::Result<Config> {
+pub fn build_global_config() -> Result<Config, SnapError> {
     let home_dir = dirs::home_dir().unwrap();
     let snapsafe_dir = home_dir.join(".snapsafe");
 
@@ -119,19 +119,25 @@ pub fn build_test_config(registry: String) -> io::Result<Config> {
     Ok(config)
 }
 
-pub fn build_local_config() -> io::Result<Config> {
+pub fn build_local_config() -> Result<Config, SnapError> {
     let home_dir = PathBuf::from("./");
     let config_path = home_dir.join("snapsafe.toml");
 
     build_config(config_path)
 }
 
-fn build_config(config_path: PathBuf) -> io::Result<Config> {
+fn build_config(config_path: PathBuf) -> Result<Config, SnapError> {
     let config = Config::new()?;
     
-    let toml_string = toml::to_string_pretty(&config).expect("Serialization Failed");
+    let toml_string = if let Ok(str) = toml::to_string_pretty(&config){
+        str
+    }else {
+        let err = SnapError::CommandError("Serialization Failed".into());
+        return Err(err);
+    };
+
     let mut file = File::create(&config_path)?;
-    let _ = file.write_all(toml_string.as_bytes());
+    file.write_all(toml_string.as_bytes())?;
 
     Ok(config)
 }
