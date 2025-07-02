@@ -132,7 +132,7 @@ fn build_config(config_path: PathBuf) -> Result<Config, SnapError> {
     let toml_string = if let Ok(str) = toml::to_string_pretty(&config){
         str
     }else {
-        let err = SnapError::CommandError("Serialization Failed".into());
+        let err = SnapError::Config("Serialization Failed".into());
         return Err(err);
     };
 

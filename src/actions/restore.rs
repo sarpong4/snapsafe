@@ -31,7 +31,8 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
         }
         ent.compression_algorithm.clone()
     }else {
-        return Err(SnapError::Restore);
+        let message = "No backup available at path provided";
+        return Err(SnapError::Restore(message.into()));
     };
 
     let engine = utils::generate_decompression_engine(algorithm);
@@ -78,7 +79,8 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
                     }
                 },
                 Err(err) => {
-                    return Err(SnapError::EncryptError(err));
+                    let message = "Failed to decrypt target file";
+                    return Err(SnapError::EncryptError(message.into(), err));
                 }
             }
         }
@@ -91,7 +93,7 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
 
     }
     else {
-        return Err(SnapError::CommandError("Failed to restore".into()));
+        return Err(SnapError::Restore("Failed to restore".into()));
     }
 
     println!("Restore to {:?} completed.", output_dir.display());

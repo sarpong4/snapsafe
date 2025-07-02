@@ -17,7 +17,7 @@ pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
             return Err(SnapError::Password(crypto::password::PasswordError::IncorrectPassword));
         }
     }else {
-        return Err(SnapError::Delete);
+        return Err(SnapError::Delete("Target provided does not exist.".into()));
     };
 
     let salt = utils::get_salt(&target);
@@ -27,7 +27,7 @@ pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
     let snapshot_dir = target.join("snapshot");
 
     if !blob_dir.exists() || !snapshot_dir.exists() {
-        return Err(SnapError::CommandError("Target does not contain any backup".into()));
+        return Err(SnapError::Delete("Target does not contain any backup".into()));
     }
 
     let nth_snapshot = utils::get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|p| PathBuf::from(p));
@@ -48,7 +48,8 @@ pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
                         fs::remove_file(&hash_path)?;
                     },
                     Err(err) => {
-                        return Err(SnapError::EncryptError(err));
+                        let message = "Could not decrypt file";
+                        return Err(SnapError::EncryptError(message.into(), err));
                     }
                 }
             }
@@ -58,10 +59,10 @@ pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
         let mut ent = entry.unwrap().clone();
         ent.remove_snapshot();
         registry.add_backup(ent);
-        registry.save_to_file();
+        registry.save_to_file()?;
     }
     else {
-        return Err(SnapError::CommandError("Failed to delete backup: Invalid password or unreadble metadata.".into()));
+        return Err(SnapError::Delete("Failed to delete backup: Invalid password or unreadble metadata.".into()));
     }
 
     println!("Deletion complete.");

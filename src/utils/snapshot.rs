@@ -75,7 +75,7 @@ impl Snapshot {
         }
 
         if files.is_empty() {
-            return Err(SnapError::CommandError("No File changes and hence backup aborted.".to_string()));
+            return Err(SnapError::Backup("No File changes and hence backup aborted.".to_string()));
         }
         else {
             files.extend(old_files);
@@ -97,11 +97,9 @@ impl Snapshot {
                 gc.register_file(&path, &file_entry.hash, &file_path)?;
             }
 
-            let mut file = fs::File::create(&file_path).expect("Failed to create snapshot file");
+            let mut file = fs::File::create(&file_path)?;
             let json = serde_json::to_string_pretty(&self)?;
-            file.write_all(json.as_bytes()).unwrap_or_else(|err| {
-                eprintln!("Could not write snapshot file: {err}");
-            });
+            file.write_all(json.as_bytes())?;
         }
         else {
             println!("Nothing to add to json, state did not change for any file");
@@ -128,16 +126,9 @@ impl Snapshot {
     }
 
     pub fn from_json_to_snapshot(json_path: &Path) -> io::Result<Self> {
-        let content = fs::read(json_path).map_err(|err| {
-            eprintln!("Could not content of {:?}: {err}", json_path);
-            io::Error::new(io::ErrorKind::InvalidInput, err)
-        })?;
+        let content = fs::read(json_path)?;
 
-        let data = serde_json::from_slice::<Snapshot>(&content)
-            .map_err(|err| {
-                eprintln!("Could not deserialize json: {err}");
-                io::Error::new(io::ErrorKind::InvalidData, err)
-            })?;
+        let data = serde_json::from_slice::<Snapshot>(&content)?;
 
         Ok(data)
     }

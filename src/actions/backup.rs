@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use crate::{crypto::{self, password}, utils::{self, config::Config, config_utils, error::SnapError, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot}};
+use crate::{crypto::{self, password::{Password, PasswordPolicy}}, utils::{self, config::Config, config_utils, error::SnapError, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot}};
 
 pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> Result<(), SnapError> {
     let password = utils::read_password()?;
@@ -16,7 +16,7 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
             prev_password
         }
     }else {
-        &password::Password::new(password, &password::PasswordPolicy::default())?
+        &Password::new(password, &PasswordPolicy::default())?
     };
 
     let (algorithm, config) = confirm_algorithm(comp, config);
@@ -59,13 +59,8 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
     let salt = utils::get_salt(&dest);
     let key = crypto::derive_key(&validated_password.hash, &salt);
     let (engine, compression) = utils::generate_compression_engine(algorithm);
-    let snap = Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref(), engine);
+    let snap = Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref(), engine)?;
     
-    if let Err(err) = snap {
-        eprintln!("Backup Aborted!");
-        return Err(err);
-    }
-    let snap = snap?;
     let _ = snap.save(&snapshot_dir, &mut gc)?;
     let _ = garbage_info.add_garbage_collector_to_limit(gc);
     let _ = garbage_info.save();

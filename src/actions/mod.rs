@@ -19,7 +19,7 @@ pub fn backup(src: &Path, dest: &Path, comp: Option<String>, config: Option<Conf
     backup::backup_data(src, dest, comp, config)
 }
 
-pub fn config(local: bool) -> io::Result<()> {
+pub fn config(local: bool) -> Result<Config, SnapError> {
     config::generate_config(local)
 }
 

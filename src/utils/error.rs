@@ -1,24 +1,42 @@
+use std::fmt;
 use std::{io, error};
 
 use crate::crypto::password::PasswordError;
 
 #[derive(Debug)]
 pub enum SnapError {
-    CommandError(String),
+    Command(String),
     Config(String),
-    Backup,
-    Restore,
-    Delete,
-    List,
+    Backup(String),
+    Restore(String),
+    Delete(String),
     Password(PasswordError),
     IOError(io::Error),
     DirError(walkdir::Error),
-    EncryptError(Box<dyn error::Error>),
+    EncryptError(String, Box<dyn error::Error>),
 }
 
-impl From<Box<dyn error::Error>> for SnapError {
-    fn from(err: Box<dyn error::Error>) -> Self {
-        Self::EncryptError(err)
+impl fmt::Display for SnapError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SnapError::Command(msg) => write!(f, "Command Error: {msg}"),
+            SnapError::Config(msg) => write!(f, "Config Error: {msg}"),
+            SnapError::Backup(msg) => write!(f, "Backup Error: {msg}"),
+            SnapError::Restore(msg) => write!(f, "Restore Error: {msg}"),
+            SnapError::Delete(msg) => write!(f, "Delete Error: {msg}"),
+            SnapError::Password(err) => write!(f, "Password Error: {err:?}"),
+            SnapError::IOError(err) => write!(f, "IO Error: {err}"),
+            SnapError::DirError(err) => write!(f, "Directory Traversal Error: {err:?}"),
+            SnapError::EncryptError(msg, _) => write!(f, "Encryption/Decryption Error: {msg}"),
+        }
+    }
+}
+
+impl From<(String, Box<dyn error::Error>)> for SnapError {
+    fn from(ctx: (String, Box<dyn error::Error>)) -> Self {
+        let msg = ctx.0;
+        let err = ctx.1;
+        Self::EncryptError(msg, err)
     }
 }
 
@@ -39,62 +57,3 @@ impl From<walkdir::Error> for SnapError {
         Self::DirError(err)
     }
 }
-
-pub fn get_error(err: SnapError) -> io::Error {
-    match err {
-        SnapError::CommandError(err) => {
-                        eprintln!("Process Failed: {err}");
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "An error occured before the command could complete execution"
-                        )
-            },
-        SnapError::Config(msg) => {
-                eprintln!("Config Build Aborted: {msg}");
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "An error occured before the config process could complete"
-                )
-            },
-        SnapError::Backup => {
-                eprintln!("Backup Aborted!");
-                io::Error::new(
-                    io::ErrorKind::NotFound, 
-                    format!("An Error occurred during Backup."))
-            },
-        SnapError::Restore | SnapError::Delete | SnapError::List => {
-                eprintln!("Process Aborted!");
-                io::Error::new(
-                    io::ErrorKind::NotFound, 
-                    "No data backup available at specified origin path: Check that your path is correct and password is valid".to_string())
-            },
-        SnapError::Password(err) => {
-                eprintln!("Password Error: {err:?}");
-                io::Error::new(
-                    io::ErrorKind::InvalidData, 
-                    "An error occurred because of your password. Please make sure your password is valid")
-            },
-        SnapError::IOError(err) => {
-                eprintln!("File I/O Error: {err}");
-                io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "An error occurred while parsing a file."
-                )
-            },
-        SnapError::DirError(err) => {
-                eprintln!("Path Traversal Error: {err}");
-                io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "An error occurred while traversing the directory."
-                )
-            }
-        SnapError::EncryptError(err) => {
-            eprintln!("Encryption/Decryption Error: {err}");
-            io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "An error occurred during the encryption/decryption process"
-                )
-        },
-    }
-}
-
