@@ -9,7 +9,7 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
     let entry = registry.find_entry(src.to_path_buf(), dest.to_path_buf());
 
     let validated_password = if let Some(ent) = entry {
-        let prev_password = &ent.passsword;
+        let prev_password = &ent.password;
         if let Err(err) =  prev_password.verify(&password) {
             return Err(SnapError::Password(err));
         } else {

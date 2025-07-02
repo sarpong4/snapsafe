@@ -12,7 +12,7 @@ pub struct BackupEntry {
     pub timestamp: DateTime<Utc>,
     pub origin_path: PathBuf,
     pub backup_path: PathBuf,
-    pub passsword: Password,
+    pub password: Password,
     pub snapshot_count: usize,
     pub compression_algorithm: String,
 }
@@ -24,7 +24,7 @@ impl Default for BackupEntry {
             timestamp: Utc::now(),
             origin_path: "source/some_file.txt".into(),
             backup_path: "target/some_file.bak".into(),
-            passsword: Password::default(),
+            password: Password::default(),
             snapshot_count: 1,
             compression_algorithm: "gzip".into()
         }
@@ -46,7 +46,7 @@ impl BackupEntry {
             timestamp, 
             origin_path: src, 
             backup_path: target, 
-            passsword: password.clone(), 
+            password: password.clone(), 
             snapshot_count: 1,
             compression_algorithm: compression,
         }
