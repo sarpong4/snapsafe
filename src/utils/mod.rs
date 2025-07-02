@@ -2,7 +2,7 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, crypto::password::{PasswordError, PasswordPolicy}, utils::{config::Config, registry::{BackupEntry, BackupRegistry}}};
+use crate::{compress::{self, CompressionEngine}, crypto::password::{PasswordError, PasswordPolicy}, utils::{config::Config, error::SnapError, registry::{BackupEntry, BackupRegistry}}};
 
 pub mod config;
 pub mod config_utils;
@@ -19,25 +19,14 @@ pub mod snapshot;
 /// If we still find nothing (this is the first backup for this path) we then look 
 /// through the local config folder for this definition and if it is still None
 /// then we look at the global config folder
-pub fn generate_compression_engine(algorithm: Option<String>) -> (CompressionEngine, String) {
-    let comp = if let None = algorithm {
-        "none".to_string()
-    }else {
-        algorithm.unwrap()
-    };
+/// The expectation is all this is done by the function that calls this.
+pub fn generate_compression_engine(algorithm: Option<String>) -> Result<(Box<dyn CompressionEngine>, String), SnapError> {
+    let comp = algorithm.unwrap_or("none".to_string());
 
-    let engine = compress::build_compress_engine(comp.clone()).unwrap();
-    (engine, comp)
+    let engine = compress::build_engine(comp.clone())?;
+    Ok((engine, comp))
 }
 
-
-/// Given the `algorithm` provided, build a decompression engine
-/// We will get to know the kind of algorithm the compression used.
-/// open to further refinement
-pub fn generate_decompression_engine(algorithm: String) -> DecompressionEngine {
-
-    compress::build_decompression_engine(algorithm).unwrap()
-}
 
 pub fn clear_directory(path: &Path) -> io::Result<()> {
     if path.exists() && path.is_dir() {

@@ -21,7 +21,7 @@ pub struct FileEntry {
 }
 
 impl Snapshot {
-    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>, engine: CompressionEngine) -> Result<Self, SnapError> {
+    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>, engine: Box<dyn CompressionEngine>) -> Result<Self, SnapError> {
         let mut files = HashMap::<PathBuf, FileEntry>::new();
         let mut old_files = HashMap::<PathBuf, FileEntry>::new();
 

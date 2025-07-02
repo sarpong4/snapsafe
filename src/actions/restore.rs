@@ -35,7 +35,7 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
         return Err(SnapError::Restore(message.into()));
     };
 
-    let engine = utils::generate_decompression_engine(algorithm);
+    let engine = utils::generate_compression_engine(Some(algorithm))?.0;
 
 
     if !output_dir.try_exists().unwrap_or(false) {

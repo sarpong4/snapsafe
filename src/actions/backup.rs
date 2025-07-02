@@ -31,23 +31,18 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
     fs::create_dir_all(&blobs_dir)?;
     fs::create_dir_all(&snapshot_dir)?;
 
-    let mut garbage_info = if let Some(gl) = GarbageLimit::from_json_to_gc().ok(){
-        gl
-    }else {
-        GarbageLimit::new()
-    };
+    let mut garbage_info = GarbageLimit::from_json_to_gc()
+                    .ok().unwrap_or_else(|| GarbageLimit::new());
 
     let gc_limit = config.unwrap().general.gc_limit;
 
     let gc_path = blobs_dir.to_string_lossy().to_string();
     let get_gc = garbage_info.get_gc_from_limit(gc_path);
-    
 
-    let mut gc = if let Some(gc) = get_gc {
-        gc.clone()
-    } else {
-        GarbageCollector::new(blobs_dir.clone(), gc_limit)
-    };
+    // Make gc an owned, mutable value
+    let mut gc = get_gc
+        .cloned()
+        .unwrap_or_else(|| GarbageCollector::new(blobs_dir.clone(), gc_limit));
 
 
 
@@ -58,7 +53,7 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
 
     let salt = utils::get_salt(&dest);
     let key = crypto::derive_key(&validated_password.hash, &salt);
-    let (engine, compression) = utils::generate_compression_engine(algorithm);
+    let (engine, compression) = utils::generate_compression_engine(algorithm)?;
     let snap = Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref(), engine)?;
     
     let _ = snap.save(&snapshot_dir, &mut gc)?;

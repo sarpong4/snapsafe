@@ -14,6 +14,7 @@ pub enum SnapError {
     IOError(io::Error),
     DirError(walkdir::Error),
     EncryptError(String, Box<dyn error::Error>),
+    InvalidCompressor(String),
 }
 
 impl fmt::Display for SnapError {
@@ -28,6 +29,7 @@ impl fmt::Display for SnapError {
             SnapError::IOError(err) => write!(f, "IO Error: {err}"),
             SnapError::DirError(err) => write!(f, "Directory Traversal Error: {err:?}"),
             SnapError::EncryptError(msg, _) => write!(f, "Encryption/Decryption Error: {msg}"),
+            SnapError::InvalidCompressor(msg) => write!(f, "Compress/Decompress Error: {msg}"),
         }
     }
 }
