@@ -64,6 +64,8 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
             let ciphertext = fs::read(&hash_path)?;
             let nonce_bytes = file_entry.nonce;
 
+            println!("{:?}", ciphertext);
+
             match crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes) {
                 Ok(decrytped) => {
                     let rel_target = output_dir.join(path);

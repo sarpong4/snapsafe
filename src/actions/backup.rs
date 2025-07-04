@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use crate::{crypto::{self, password::{Password, PasswordPolicy}}, utils::{self, config::Config, config_utils, error::SnapError, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot}};
+use crate::{crypto::{self, password::{Password, PasswordError, PasswordPolicy}}, utils::{self, config::Config, config_utils, error::SnapError, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot}};
 
 pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> Result<(), SnapError> {
     let password = utils::read_password()?;
@@ -10,13 +10,16 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
 
     let validated_password = if let Some(ent) = entry {
         let prev_password = &ent.password;
-        if let Err(err) =  prev_password.verify(&password) {
+        let verification =  prev_password.verify(&password);
+        if let Err(err) =  verification {
             return Err(SnapError::Password(err));
-        } else {
-            prev_password
+        } 
+        else if let Ok(false) = verification {
+            return Err(SnapError::Password(PasswordError::IncorrectPassword));
         }
+        prev_password
     }else {
-        &Password::new(password, &PasswordPolicy::default())?
+        &Password::new(password.clone(), &PasswordPolicy::default())?
     };
 
     let (algorithm, config) = confirm_algorithm(comp, config);
@@ -52,7 +55,7 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
                 .map(|path| std::path::PathBuf::from(path));
 
     let salt = utils::get_salt(&dest);
-    let key = crypto::derive_key(&validated_password.hash, &salt);
+    let key = crypto::derive_key(&password, &salt);
     let (engine, compression) = utils::generate_compression_engine(algorithm)?;
     let snap = Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref(), engine)?;
     
