@@ -243,12 +243,20 @@ mod registry_tests {
 }
 
 mod password_tests {
-    #[test]
-    fn test_password_roundtrip(){}
+    use crate::crypto::password::{Password, PasswordPolicy};
 
     #[test]
-    fn test_invalid_format(){}
+    fn test_password_roundtrip(){
+        let policy = PasswordPolicy::default();
+        let password = Password::new("ItisValidP3#".into(), &policy).unwrap();
+
+        assert!(password.verify("ItisValidP3#").unwrap())
+    }
 
     #[test]
-    fn test_valid(){}
+    fn test_invalid_format(){
+        let policy = PasswordPolicy::default();
+
+        assert!(Password::new("password".into(), &policy).is_err())
+    }
 }
