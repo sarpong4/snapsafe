@@ -4,7 +4,7 @@ use tempfile::{tempdir, NamedTempFile};
 
 
 pub fn get_password() -> String {
-    String::from("password")
+    String::from("ItisValidP3#")
 }
 
 pub fn write_test_file<P: AsRef<Path>>(path: P, content: &str) {
