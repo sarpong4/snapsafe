@@ -125,7 +125,7 @@ fn test_cli_restore_with_correct_password_but_no_data_has_been_backed_up_should_
 
     clear_test_registry(&registry);
     assert.failure()
-        .stderr(contains("No data backup available"));
+        .stderr(contains("No backup available at path"));
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn test_cli_restore_with_incorrect_password_treated_as_no_backup_data() {
 
     let mut cmd2 = Command::cargo_bin("snapsafe").unwrap();
 
-    cmd2.env("SNAPSAFE_PASSWORD", "wrong password")
+    cmd2.env("SNAPSAFE_PASSWORD", "Wrong2Password;")
         .env("SNAPSAFE_TEST_REGISTRY", &registry)
         .env("TEST_CONFIG", &registry)
         .arg("restore")
@@ -163,7 +163,7 @@ fn test_cli_restore_with_incorrect_password_treated_as_no_backup_data() {
 
     clear_test_registry(&registry);
     assert.failure()
-        .stderr(contains("No data backup available"));
+        .stderr(contains("Password Error: IncorrectPassword"));
 }
 
 #[test]
@@ -225,7 +225,7 @@ fn test_cli_restore_3rd_version_after_one_backup_treated_as_no_backup_data() {
 
     clear_test_registry(&registry);
     assert.failure()
-        .stderr(contains("No data backup available"));
+        .stderr(contains("Failed to restore"));
 }
 
 // DELETE COMMAND TESTS
@@ -251,7 +251,7 @@ fn test_cli_delete_with_no_backup_data_should_fail() {
 
     clear_test_registry(&registry);
     assert.failure()
-        .stderr(contains("Target does not contain any backup"));
+        .stderr(contains("Target provided does not exist"));
 }
 
 #[test]
@@ -277,7 +277,7 @@ fn test_cli_delete_with_incorrect_password_should_fail() {
     clear_test_registry(&registry);
 
     assert.failure()
-        .stderr(contains("Destination password is different from the password you provided."));
+        .stderr(contains("Password Error: IncorrectPassword"));
 }
 
 #[test]
@@ -380,7 +380,7 @@ fn test_cli_delete_3rd_version_after_1_backup_should_fail() {
     clear_test_registry(&registry);
 
     assert.failure()
-        .stderr(contains("No data backup available at specified origin"));
+        .stderr(contains("Failed to delete backup"));
 
 }
 
@@ -480,11 +480,3 @@ fn test_cli_list_after_backup_and_restore_should_print_nothing() {
     clear_test_registry(&registry);
     assert.success().stdout(contains("No data has been backed up"));
 }
-
-// CONFIG TESTS
-
-#[test]
-fn test_global_config_builds_a_global_config_file() {}
-
-#[test]
-fn test_local_config_build_a_local_config_file() {}

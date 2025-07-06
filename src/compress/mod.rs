@@ -1,12 +1,10 @@
-use std::io;
+pub mod compress_engine;
+
 use std::str::FromStr;
 
-pub mod compressor;
-pub mod decompressor;
+pub use compress_engine::{CompressionType, CompressionEngine};
 
-pub use compressor::{CompressionType, CompressionEngine};
-
-use crate::{compress::decompressor::DecompressionEngine, utils::{self, SnapError}};
+use crate::{compress::{compress_engine::{BrotliEngine, GzipEngine, LzmaEngine, NullEngine, ZlibEngine, ZstdEngine}}, utils::error::SnapError};
 
 // algorithm levels
 // gzip/zlib -> use default (6)
@@ -23,45 +21,29 @@ fn get_algorithm_levels(algo: &CompressionType) -> u32 {
     }
 }
 
-pub fn build_compress_engine(comp: String) -> io::Result<CompressionEngine> {
+pub fn build_engine(comp: String) -> Result<Box<dyn CompressionEngine>, SnapError> {
     // parse config according to overriding definition:
     // check if it is part of the command line arguments first
     // if not check global config file if none
     // check local config
 
-    let algo = get_compression_type(comp);
-
-    if let Err(err) = algo {
-        return Err(err);
-    }
-
-    let algo = algo.unwrap();
+    let algo = get_compression_type(comp)?;
     let level = get_algorithm_levels(&algo);
 
-    Ok(CompressionEngine::new(algo, level))
+    let engine: Box<dyn CompressionEngine> = match algo {
+        CompressionType::None => Box::new(NullEngine),
+        CompressionType::Gzip => Box::new(GzipEngine { level }),
+        CompressionType::Zlib => Box::new(ZlibEngine { level }),
+        CompressionType::Brotli => Box::new(BrotliEngine { level }),
+        CompressionType::Zstd => Box::new(ZstdEngine { level: level as i32 }),
+        CompressionType::Lzma => Box::new(LzmaEngine { level }),
+    };
+
+    Ok(engine)
 }
 
-pub fn get_compression_type(comp: String) -> io::Result<CompressionType> {
-    let compression_type = CompressionType::from_str(comp.as_str());
+pub fn get_compression_type(comp: String) -> Result<CompressionType, SnapError> {
+    let compression_type = CompressionType::from_str(comp.as_str())?;
 
-    if let Err(_) = compression_type {
-        let err = utils::get_error(SnapError::Config);
-        eprintln!("Defined algorithm choice unavailble");
-        return Err(err);
-    }
-
-    Ok(compression_type.unwrap())
-}
-
-pub fn build_decompression_engine(comp: String) -> io::Result<DecompressionEngine> {
-
-    let algo = get_compression_type(comp);
-
-    if let Err(err) = algo {
-        return Err(err);
-    }
-
-    let algo = algo.unwrap();
-
-    Ok(DecompressionEngine::new(algo))
+    Ok(compression_type)
 }

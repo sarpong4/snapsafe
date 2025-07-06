@@ -25,6 +25,7 @@ toml = "0.8.23"
 uuid = { version = "1.17.0", features = ["v4"] }
 walkdir = "2.5.0"
 xz2 = "0.1.7"
+zeroize = "1.8.1"
 zstd = "0.13.3"
 
 [dev-dependencies]

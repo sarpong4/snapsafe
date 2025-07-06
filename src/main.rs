@@ -6,7 +6,7 @@ fn main() -> ExitCode {
     match entry() {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("Error: {e}");
+            eprintln!("[ERROR]: {e}");
             ExitCode::FAILURE
         }
     }

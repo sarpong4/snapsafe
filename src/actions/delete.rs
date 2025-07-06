@@ -1,19 +1,24 @@
-use std::{fs, io, path::{Path, PathBuf}};
+use std::{fs, path::{Path, PathBuf}};
 
-use crate::{crypto, utils::{self, snapshot::Snapshot, SnapError}};
+use crate::{crypto, utils::{self, error::SnapError, snapshot::Snapshot}};
 
-pub fn delete_data(nth: usize, target: &Path) -> io::Result<()> {
-    let password = utils::read_password();
+pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
+    let password = utils::read_password()?;
 
     let mut registry = utils::get_registry();
     let entry = registry.find_entry_from_dest(target.to_path_buf());
 
-    let password_hash = utils::hash_password(&password);
-    let comp_from_entry = utils::compare_password(entry, &password_hash, SnapError::Delete);
-
-    if let Err(err) = comp_from_entry {
-        return Err(err);
-    }
+    if let Some(ent) = entry {
+        let backup_password = &ent.password;
+        let verify = backup_password.verify(&password);
+        if let Err(err) = verify {
+            return Err(SnapError::Password(err));
+        }else if let Ok(false) = verify {
+            return Err(SnapError::Password(crypto::password::PasswordError::IncorrectPassword));
+        }
+    }else {
+        return Err(SnapError::Delete("Target provided does not exist.".into()));
+    };
 
     let salt = utils::get_salt(&target);
     let key = crypto::derive_key(&password, &salt);
@@ -22,9 +27,7 @@ pub fn delete_data(nth: usize, target: &Path) -> io::Result<()> {
     let snapshot_dir = target.join("snapshot");
 
     if !blob_dir.exists() || !snapshot_dir.exists() {
-        let err = utils::get_error(utils::SnapError::Delete);
-        eprintln!("Target does not contain any backup");
-        return Err(err);
+        return Err(SnapError::Delete("Target does not contain any backup".into()));
     }
 
     let nth_snapshot = utils::get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|p| PathBuf::from(p));
@@ -33,7 +36,7 @@ pub fn delete_data(nth: usize, target: &Path) -> io::Result<()> {
         let snapshot = Snapshot::from_json_to_snapshot(&snap_path)?;
         let snapshot_files = snapshot.files;
 
-        for (path, file) in snapshot_files {
+        for (_, file) in snapshot_files {
             if file.isupdated {
                 let hash_path = blob_dir.join(&file.hash);
 
@@ -42,45 +45,24 @@ pub fn delete_data(nth: usize, target: &Path) -> io::Result<()> {
 
                 match crypto::decrypt_file_bytes(&ciphertext, &key, &nonce_bytes) {
                     Ok(_) => {
-                        if let Err(_) = fs::remove_file(&hash_path) {
-                            let err = utils::get_error(utils::SnapError::Delete);
-                            return Err(err);
-                        }
-
-                        if hash_path.exists() {
-                            eprintln!("Hash file {:?} was not deleted properly.", hash_path);
-                            let err = utils::get_error(utils::SnapError::Delete);
-                            return Err(err);
-                        }
+                        fs::remove_file(&hash_path)?;
                     },
                     Err(err) => {
-                        eprintln!("Failed to decrypt data at {:?}: {err}", path);
-                        let er = utils::get_error(utils::SnapError::Delete);
-                        return Err(er);
+                        let message = "Could not decrypt file";
+                        return Err(SnapError::EncryptError(message.into(), err));
                     }
                 }
             }
         }
-        if let Err(_) = fs::remove_file(snap_path) {
-            let err = utils::get_error(utils::SnapError::Delete);
-            return Err(err);
-        }
-        
-        
-        if let Some(entry) = utils::remove_snapshot(&mut registry, target.to_path_buf()) {
-            let _ = registry.add_backup(entry);
-            let _ = registry.save_to_file();
-        }
-        else {
-            let err = utils::get_error(utils::SnapError::Delete);
-            eprintln!("Snapshot with backup path: {:?} does not exist.", target);
-            return Err(err);
-        }
+        fs::remove_file(snap_path)?;
+
+        let mut ent = entry.unwrap().clone();
+        ent.remove_snapshot();
+        registry.add_backup(ent);
+        registry.save_to_file()?;
     }
     else {
-        let err = utils::get_error(utils::SnapError::Delete);
-        eprintln!("Failed to delete backup: Invalid password or unreadable metadata: {err}");
-        return Err(err);
+        return Err(SnapError::Delete("Failed to delete backup: Invalid password or unreadble metadata.".into()));
     }
 
     println!("Deletion complete.");

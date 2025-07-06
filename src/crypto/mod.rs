@@ -3,6 +3,8 @@ use std::error::Error;
 use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit, Nonce};
 use argon2::Argon2;
 
+pub mod password;
+
 pub fn derive_key(password: &str, salt: &[u8]) -> [u8; 32] {
     let argon2 = Argon2::default();
     let mut key = [0u8; 32];

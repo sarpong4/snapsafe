@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 use std::{collections::HashMap, fs, io::{self, Write}, path::{Path, PathBuf}, time::SystemTime};
 
-use crate::{compress::CompressionEngine, crypto, utils::{gc::GarbageCollector}};
+use crate::{compress::CompressionEngine, crypto, utils::{error::SnapError, gc::GarbageCollector}};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Snapshot {
@@ -21,7 +21,7 @@ pub struct FileEntry {
 }
 
 impl Snapshot {
-    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>, engine: CompressionEngine) -> io::Result<Self> {
+    pub fn create(src: &Path, target: &Path, key: &[u8], latest_json_path: Option<&PathBuf>, engine: Box<dyn CompressionEngine>) -> Result<Self, SnapError> {
         let mut files = HashMap::<PathBuf, FileEntry>::new();
         let mut old_files = HashMap::<PathBuf, FileEntry>::new();
 
@@ -75,10 +75,7 @@ impl Snapshot {
         }
 
         if files.is_empty() {
-            let err = io::Error::new(
-                io::ErrorKind::InvalidData, 
-                format!("No File changes and hence backup aborted."));
-            return Err(err);
+            return Err(SnapError::Backup("No File changes and hence backup aborted.".to_string()));
         }
         else {
             files.extend(old_files);
@@ -100,11 +97,9 @@ impl Snapshot {
                 gc.register_file(&path, &file_entry.hash, &file_path)?;
             }
 
-            let mut file = fs::File::create(&file_path).expect("Failed to create snapshot file");
+            let mut file = fs::File::create(&file_path)?;
             let json = serde_json::to_string_pretty(&self)?;
-            file.write_all(json.as_bytes()).unwrap_or_else(|err| {
-                eprintln!("Could not write snapshot file: {err}");
-            });
+            file.write_all(json.as_bytes())?;
         }
         else {
             println!("Nothing to add to json, state did not change for any file");
@@ -131,16 +126,9 @@ impl Snapshot {
     }
 
     pub fn from_json_to_snapshot(json_path: &Path) -> io::Result<Self> {
-        let content = fs::read(json_path).map_err(|err| {
-            eprintln!("Could not content of {:?}: {err}", json_path);
-            io::Error::new(io::ErrorKind::InvalidInput, err)
-        })?;
+        let content = fs::read(json_path)?;
 
-        let data = serde_json::from_slice::<Snapshot>(&content)
-            .map_err(|err| {
-                eprintln!("Could not deserialize json: {err}");
-                io::Error::new(io::ErrorKind::InvalidData, err)
-            })?;
+        let data = serde_json::from_slice::<Snapshot>(&content)?;
 
         Ok(data)
     }

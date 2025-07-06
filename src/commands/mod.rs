@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 
-use crate::{actions, utils::{self, SnapError}};
+use crate::{actions, utils::{self, error::SnapError}};
 
 #[derive(Parser)]
 #[command(name = "snapshot", version = "1.0", about = "A secure backup and restore tool.", after_help = "Strict password enforcement:\n\
@@ -56,76 +56,52 @@ pub enum Commands {
 }
 
 
-pub fn entry() -> Result<(), Box<dyn std::error::Error>> {
+pub fn entry() -> Result<(), SnapError> {
     let cli = CLI::parse();
 
     match cli.command {
         Commands::Config { global: _, local } => {
-            let conf_build = actions::config(local);
-
-            if let Err(err) = conf_build {
-                return Err(Box::new(err));
-            }
-
-            return Ok(());
+            let _ = actions::config(local)?;
         },
         Commands::Backup { source, target,  comp} => {
             let src = Path::new(&source);
             let dest = Path::new(&target);
 
             if !src.exists() {
-                eprintln!("Source directory does not exist.");
-                let err = utils::get_error(SnapError::Command);
-                return Err(Box::new(err));
+                let err = SnapError::Command("Source directory does not exist".into());
+                return Err(err);
             }
 
             let config = Some(utils::get_config());
 
-            if let Err(err) = actions::backup(src, dest, comp, config) {
-                return  Err(Box::new(err));
-            }
-            return Ok(());
+            actions::backup(src, dest, comp, config)?;
         },
         Commands::Restore { number, origin, target } => {
             let src = Path::new(&origin);
             let output_dir = Path::new(&target);
 
             if !src.exists() {
-                eprintln!("Directory with expected backed up data does not exist.");
-                let err = utils::get_error(SnapError::Command);
-                return Err(Box::new(err));
+                let message = "Directory with expected backed up data does not exist.";
+                let err = SnapError::Command(message.into());
+                return Err(err);
             }
 
-            let restore_return = actions::restore(
-                number.unwrap_or(1),
-                src, 
-                output_dir
-            );
-
-            if let Err(err) = restore_return {
-                return Err(Box::new(err))
-            }
-            return Ok(());
+            actions::restore(number.unwrap_or(1), src, output_dir)?;
         },
         Commands::Delete { number, origin, force} => {
             let target = Path::new(&origin);
             
             if !target.try_exists().unwrap_or(false) {
-                eprintln!("Target Directory with expected backed up data does not exist");
-                let err = utils::get_error(SnapError::Command);
-                return Err(Box::new(err));
+                let message = "Target Directory with expected backed up data does not exist";
+                let err = SnapError::Command(message.into());
+                return Err(err);
             }
 
-            let delete_return = 
-                actions::delete(number.unwrap_or(1), target, force);
-            if let Err(err) = delete_return {
-                return Err(Box::new(err))
-            }
-            return Ok(());
-        }
+            actions::delete(number.unwrap_or(1), target, force)?;
+        },
         Commands::List => {
             let _ = actions::list();
-            return Ok(());
         }
     }
+    Ok(())
 }

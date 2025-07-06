@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs, io::{self, Write}, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::utils::snapshot::Snapshot;
+use crate::utils::{error::SnapError, snapshot::Snapshot};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GarbageCollector {
@@ -54,7 +54,7 @@ impl GarbageLimit {
         map.get(&path)
     }
 
-    pub fn save(&self) -> io::Result<()> {
+    pub fn save(&self) -> Result<(), SnapError> {
         
         if !&self.gc.is_empty() {
             let home_dir = dirs::home_dir().unwrap();
@@ -67,9 +67,7 @@ impl GarbageLimit {
             let gc_path = snapsafe_dir.join("gc.json");
             let mut file = fs::File::create(&gc_path).expect("Failed to create gc file");
             let json = serde_json::to_string_pretty(&self).expect("Could not prettify data");
-            file.write_all(json.as_bytes()).unwrap_or_else(|err| {
-                    eprintln!("Could not write gc file: {err}");
-            });
+            file.write_all(json.as_bytes())?;
         }
         else {
             println!("Nothing to add to json, state did not change for any file");
@@ -83,19 +81,9 @@ impl GarbageLimit {
         let snapsafe_dir = home_dir.join(".snapsafe");
         let gc_path = snapsafe_dir.join("gc.json");
 
-        let content = if let Ok(det) = fs::read(&gc_path){
-            det
-        }else {
-            let err = " The system cannot find the file specified. (os error 2)";
-            eprintln!("Could not read the content of {:?}: {err}", gc_path);
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, err));
-        };
+        let content = fs::read(&gc_path)?;
 
-        let data = serde_json::from_slice::<GarbageLimit>(&content)
-            .map_err(|err| {
-                eprintln!("Could not deserialize json: {err}");
-                io::Error::new(io::ErrorKind::InvalidData, err)
-            })?;
+        let data = serde_json::from_slice::<GarbageLimit>(&content)?;
 
         Ok(data)
     }

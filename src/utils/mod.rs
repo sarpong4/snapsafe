@@ -2,22 +2,14 @@ use std::{fs, io::{self, Write}, path::{Path, PathBuf}};
 
 use rpassword::prompt_password;
 
-use crate::{compress::{self, decompressor::DecompressionEngine, CompressionEngine}, utils::{config::Config, registry::{BackupEntry, BackupRegistry}}};
+use crate::{compress::{self, CompressionEngine}, crypto::password::{PasswordError, PasswordPolicy}, utils::{config::Config, error::SnapError, registry::{BackupEntry, BackupRegistry}}};
 
 pub mod config;
 pub mod config_utils;
+pub mod error;
 pub mod gc;
 pub mod registry;
 pub mod snapshot;
-
-pub enum SnapError {
-    Command,
-    Config,
-    Backup,
-    Restore,
-    Delete,
-    List,
-}
 
 /// Generate a compression engine from the algorithm information provided.
 /// 
@@ -27,25 +19,14 @@ pub enum SnapError {
 /// If we still find nothing (this is the first backup for this path) we then look 
 /// through the local config folder for this definition and if it is still None
 /// then we look at the global config folder
-pub fn generate_compression_engine(algorithm: Option<String>) -> (CompressionEngine, String) {
-    let comp = if let None = algorithm {
-        "none".to_string()
-    }else {
-        algorithm.unwrap()
-    };
+/// The expectation is all this is done by the function that calls this.
+pub fn generate_compression_engine(algorithm: Option<String>) -> Result<(Box<dyn CompressionEngine>, String), SnapError> {
+    let comp = algorithm.unwrap_or("none".to_string());
 
-    let engine = compress::build_compress_engine(comp.clone()).unwrap();
-    (engine, comp)
+    let engine = compress::build_engine(comp.clone())?;
+    Ok((engine, comp))
 }
 
-
-/// Given the `algorithm` provided, build a decompression engine
-/// We will get to know the kind of algorithm the compression used.
-/// open to further refinement
-pub fn generate_decompression_engine(algorithm: String) -> DecompressionEngine {
-
-    compress::build_decompression_engine(algorithm).unwrap()
-}
 
 pub fn clear_directory(path: &Path) -> io::Result<()> {
     if path.exists() && path.is_dir() {
@@ -64,12 +45,22 @@ pub fn clear_directory(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn read_password() -> String {
+pub fn read_password() -> Result<String, PasswordError> {
     if let Ok(pwd) = std::env::var("SNAPSAFE_PASSWORD") {
-        return pwd;
+        return Ok(pwd);
     }
 
-    prompt_password("Enter password: ").expect("Failed to read password")
+    let policy = PasswordPolicy::default();
+
+    let message = policy.generate_policy();
+    println!("{message}");
+    let pwd = prompt_password("Enter Password: ")?;
+
+    if let Err(err) = policy.validate(&pwd){
+        return Err(err)
+    };
+
+    Ok(pwd)
 }
 
 pub fn get_registry() -> BackupRegistry {
@@ -86,26 +77,6 @@ pub fn get_registry() -> BackupRegistry {
                 .unwrap_or(bkup_registry);
 
     backup_registry
-}
-
-pub fn compare_password(entry: Option<&BackupEntry>, password_hash: &str, error: SnapError) -> io::Result<Option<String>> {
-    // strict no password change enforcement.
-    if let Some(ent) = entry {
-        if password_hash != ent.passsword_hash {
-            eprintln!("Destination password is different from the password you provided.");
-            let err = get_error(error);
-            return Err(err);
-        }
-
-        // use the compression algorithm on the BackupEntry even if it is different from the one 
-        // like single-enforcement of password, you cannot change the compression algorithm once
-        // it has been set.
-        // the user provided now. We use the same algorithm throughout when we compress a 
-        // given source -> destination
-        return Ok(Some(ent.compression_algorithm.clone()));
-    }
-
-    Ok(None)
 }
 
 pub fn get_config() -> Config {
@@ -182,37 +153,6 @@ pub fn get_salt(dir: &Path) -> Vec<u8> {
     };
 
     salt
-}
-
-pub fn get_error(err: SnapError) -> io::Error {
-    match err {
-        SnapError::Command => {
-            eprintln!("Process Failed!");
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "An error occured before the command could execute"
-            )
-        },
-        SnapError::Config => {
-            eprintln!("Config Build Aborted");
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "An error occured before the config process could complete"
-            )
-        },
-        SnapError::Backup => {
-            eprintln!("Backup Aborted!");
-            io::Error::new(
-                io::ErrorKind::NotFound, 
-                format!("An Error occurred during Backup."))
-        },
-        SnapError::Restore | SnapError::Delete | SnapError::List => {
-            eprintln!("Process Aborted!");
-            io::Error::new(
-                io::ErrorKind::NotFound, 
-                "No data backup available at specified origin path: Check that your path is correct and password is valid".to_string())
-        },
-    }
 }
 
 /// Remove a snapshot from the entry with the destination path (destination path is unique) 
