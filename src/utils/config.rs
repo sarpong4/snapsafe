@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::{config_utils, error::SnapError};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     #[serde(rename = "general")]
     pub general: GeneralConfig,
@@ -17,7 +17,7 @@ pub struct Config {
     // pub cloud: CloudConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GeneralConfig {
     pub registry_dir: String,
     pub compression: String,
