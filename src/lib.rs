@@ -260,3 +260,19 @@ mod password_tests {
         assert!(Password::new("password".into(), &policy).is_err())
     }
 }
+
+mod config_tests {
+    use crate::utils::config::{Config, GeneralConfig};
+
+
+    #[test]
+    fn test_config_roundtrip() {
+        let general = GeneralConfig::from(("some/path".into(), "gzip".into(), 3));
+        let original = Config { general };
+
+        let toml = toml::to_string(&original).unwrap();
+        let deserialized: Config = toml::from_str(toml).unwrap();
+
+        assert_eq!(original, deserialized);
+    }
+}
