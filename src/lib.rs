@@ -271,7 +271,7 @@ mod config_tests {
         let original = Config { general };
 
         let toml = toml::to_string(&original).unwrap();
-        let deserialized: Config = toml::from_str(toml).unwrap();
+        let deserialized: Config = toml::from_str(&toml).unwrap();
 
         assert_eq!(original, deserialized);
     }
