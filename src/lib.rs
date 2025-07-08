@@ -276,3 +276,23 @@ mod config_tests {
         assert_eq!(original, deserialized);
     }
 }
+
+mod layout_tests {
+    use crate::utils::layout::SnapshotLayout;
+
+    #[test]
+    fn test_layout_initializes_correctly() {
+        let tmp = tempfile::tempdir().unwrap();
+        let layout = SnapshotLayout::initialize(tmp.path()).unwrap();
+        assert!(layout.blobs.exists());
+        assert!(layout.snapshots.exists());
+    }
+
+    #[test]
+    fn test_blob_and_snapshot_path_validates() {
+        let tmp = tempfile::tempdir().unwrap();
+        let layout = SnapshotLayout::initialize(tmp.path()).unwrap();
+
+        assert!(layout.validate().is_ok())
+    }
+}
