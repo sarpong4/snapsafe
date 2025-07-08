@@ -1,6 +1,6 @@
 use std::{fs, path::{Path, PathBuf}};
 
-use crate::{crypto, utils::{self, error::SnapError, snapshot::Snapshot}};
+use crate::{crypto, utils::{self, error::SnapError, layout::SnapshotLayout, snapshot::Snapshot}};
 
 pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
     let password = utils::read_password()?;
@@ -23,14 +23,12 @@ pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
     let salt = utils::get_salt(&target);
     let key = crypto::derive_key(&password, &salt);
 
-    let blob_dir = target.join("blobs");
-    let snapshot_dir = target.join("snapshot");
+    let layout = SnapshotLayout::initialize(target)?;
 
-    if !blob_dir.exists() || !snapshot_dir.exists() {
-        return Err(SnapError::Delete("Target does not contain any backup".into()));
-    }
+    let _ = layout.validate()?;
 
-    let nth_snapshot = utils::get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|p| PathBuf::from(p));
+    let nth_snapshot = 
+        utils::get_nth_recent_json_snapshot(nth, &layout.snapshots)?.map(|p| PathBuf::from(p));
 
     if let Some(snap_path) = nth_snapshot {
         let snapshot = Snapshot::from_json_to_snapshot(&snap_path)?;
@@ -38,7 +36,7 @@ pub fn delete_data(nth: usize, target: &Path) -> Result<(), SnapError> {
 
         for (_, file) in snapshot_files {
             if file.isupdated {
-                let hash_path = blob_dir.join(&file.hash);
+                let hash_path = layout.blobs.join(&file.hash);
 
                 let ciphertext = fs::read(&hash_path)?;
                 let nonce_bytes = file.nonce;

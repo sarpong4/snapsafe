@@ -1,6 +1,6 @@
 use std::{fs, path::{Path, PathBuf}};
 
-use crate::{crypto, utils::{self, error::SnapError, snapshot::Snapshot}};
+use crate::{crypto, utils::{self, error::SnapError, layout::SnapshotLayout, snapshot::Snapshot}};
 
 /// Restore the nth version of a backup at the location: `src`
 /// Returns: `Ok(())` when successful or `Err(SnapError)` on any kind of failure.
@@ -45,21 +45,18 @@ pub fn restore(nth: usize, src: &Path, output_dir: &Path) -> Result<(), SnapErro
     let salt = utils::get_salt(&src);
     let key = crypto::derive_key(&password, &salt);
 
-    let blobs_dir = src.join("blobs");
-    let snapshot_dir = src.join("snapshot");
+    let layout = SnapshotLayout::initialize(src)?;
+    let _ = layout.validate()?;
     
-    let nth_snapshot = if snapshot_dir.try_exists().unwrap() {
-        utils::get_nth_recent_json_snapshot(nth, &snapshot_dir)?.map(|path| PathBuf::from(path))
-    } else {
-        None
-    };
+    let nth_snapshot = 
+        utils::get_nth_recent_json_snapshot(nth, &layout.snapshots)?.map(|path| PathBuf::from(path));
 
     if let Some(snapshot_path) = nth_snapshot {
         let snapshot = Snapshot::from_json_to_snapshot(&snapshot_path)?;
         let snapshot_files = snapshot.files;
         
         for (path, file_entry) in snapshot_files {
-            let hash_path = blobs_dir.join(&file_entry.hash);
+            let hash_path = layout.blobs.join(&file_entry.hash);
 
             let ciphertext = fs::read(&hash_path)?;
             let nonce_bytes = file_entry.nonce;

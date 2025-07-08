@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use crate::{crypto::{self, password::{Password, PasswordError, PasswordPolicy}}, utils::{self, config::Config, config_utils, error::SnapError, gc::{GarbageCollector, GarbageLimit}, registry::BackupEntry, snapshot::Snapshot}};
+use crate::{crypto::{self, password::{Password, PasswordError, PasswordPolicy}}, utils::{self, config::Config, config_utils, error::SnapError, gc::{GarbageCollector, GarbageLimit}, layout::SnapshotLayout, registry::BackupEntry, snapshot::Snapshot}};
 
 pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option<Config>) -> Result<(), SnapError> {
     let password = utils::read_password()?;
@@ -28,38 +28,34 @@ pub fn backup_data(src: &Path, dest: &Path, comp: Option<String>, config: Option
         fs::create_dir_all(&dest)?;
     }
 
-    let blobs_dir = dest.join("blobs");
-    let snapshot_dir = dest.join("snapshot");
-
-    fs::create_dir_all(&blobs_dir)?;
-    fs::create_dir_all(&snapshot_dir)?;
+    let layout = SnapshotLayout::initialize(dest)?;
 
     let mut garbage_info = GarbageLimit::from_json_to_gc()
                     .ok().unwrap_or_else(|| GarbageLimit::new());
 
     let gc_limit = config.unwrap().general.gc_limit;
 
-    let gc_path = blobs_dir.to_string_lossy().to_string();
+    let gc_path = layout.blobs.to_string_lossy().to_string();
     let get_gc = garbage_info.get_gc_from_limit(gc_path);
 
     // Make gc an owned, mutable value
     let mut gc = get_gc
         .cloned()
-        .unwrap_or_else(|| GarbageCollector::new(blobs_dir.clone(), gc_limit));
+        .unwrap_or_else(|| GarbageCollector::new(layout.blobs.clone(), gc_limit));
 
 
 
     // we need the latest json file if there is any
     let latest_json = 
-            utils::get_nth_recent_json_snapshot(0, &snapshot_dir)?
+            utils::get_nth_recent_json_snapshot(0, &layout.snapshots)?
                 .map(|path| std::path::PathBuf::from(path));
 
     let salt = utils::get_salt(&dest);
     let key = crypto::derive_key(&password, &salt);
     let (engine, compression) = utils::generate_compression_engine(algorithm)?;
-    let snap = Snapshot::create(src, &blobs_dir, &key, latest_json.as_ref(), engine)?;
+    let snap = Snapshot::create(src, &layout.blobs, &key, latest_json.as_ref(), engine)?;
     
-    let _ = snap.save(&snapshot_dir, &mut gc)?;
+    let _ = snap.save(&layout.snapshots, &mut gc)?;
     let _ = garbage_info.add_garbage_collector_to_limit(gc);
     let _ = garbage_info.save();
 
