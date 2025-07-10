@@ -3,6 +3,7 @@ pub mod commands;
 pub mod compress;
 pub mod utils;
 pub mod crypto;
+pub mod registry;
 
 #[cfg(test)]
 mod crypto_tests {
