@@ -59,17 +59,17 @@ impl BackupRegistry {
     }
 
     pub fn add_entry(&mut self, entry: BackupEntry) -> Result<(), SnapError> {
-        let origin = entry.origin.clone();
-        let entries = self.entries.entry(origin.clone()).or_insert_with(Vec::new);
+        let dest = entry.destination.clone();
+        let entries = self.entries.entry(dest.clone()).or_insert_with(Vec::new);
         entries.push(entry);
 
         Ok(())
     }
 
-    pub fn get_latest_for(&self, origin: &Path) -> Result<Option<BackupEntry>, SnapError> {
-        let origin = fs::canonicalize(origin)?.to_string_lossy().to_string();
+    pub fn get_latest_for(&self, dest: &Path) -> Result<Option<BackupEntry>, SnapError> {
+        let dest = fs::canonicalize(dest)?.to_string_lossy().to_string();
 
-        let entries = self.entries.get(&origin);
+        let entries = self.entries.get(&dest);
 
         let result = match entries {
             Some(entries) => {
@@ -84,10 +84,10 @@ impl BackupRegistry {
         Ok(result)
     }
 
-    pub fn get_nth_for(&self, origin: &Path, nth: usize) -> Result<Option<BackupEntry>, SnapError> {
-        let origin = fs::canonicalize(origin)?.to_string_lossy().to_string();
+    pub fn get_nth_for(&self, dest: &Path, nth: usize) -> Result<Option<BackupEntry>, SnapError> {
+        let dest = fs::canonicalize(dest)?.to_string_lossy().to_string();
 
-        let entries = self.entries.get(&origin);
+        let entries = self.entries.get(&dest);
 
         let result = match entries {
                     Some(entries) => {
@@ -104,10 +104,10 @@ impl BackupRegistry {
         Ok(result)
     }
 
-    pub fn list_for(&self, origin: &Path) -> Result<Vec<BackupEntry>, SnapError> {
-        let origin = fs::canonicalize(origin)?.to_string_lossy().to_string();
+    pub fn list_for(&self, dest: &Path) -> Result<Vec<BackupEntry>, SnapError> {
+        let dest = fs::canonicalize(dest)?.to_string_lossy().to_string();
 
-        let entries = self.entries.get(&origin).cloned().unwrap_or_else(Vec::new);
+        let entries = self.entries.get(&dest).cloned().unwrap_or_else(Vec::new);
 
         Ok(entries)
     }
