@@ -8,6 +8,7 @@ pub mod config;
 pub mod config_utils;
 pub mod error;
 pub mod gc;
+pub mod layout;
 pub mod registry;
 pub mod snapshot;
 

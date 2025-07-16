@@ -1,4 +1,5 @@
 use std::fmt;
+use std::path::PathBuf;
 use std::{io, error};
 
 use crate::crypto::password::PasswordError;
@@ -15,6 +16,8 @@ pub enum SnapError {
     DirError(walkdir::Error),
     EncryptError(String, Box<dyn error::Error>),
     InvalidCompressor(String),
+    InvalidSnapshotLayout(PathBuf),
+    SerializationError(String),
 }
 
 impl fmt::Display for SnapError {
@@ -30,6 +33,8 @@ impl fmt::Display for SnapError {
             SnapError::DirError(err) => write!(f, "Directory Traversal Error: {err:?}"),
             SnapError::EncryptError(msg, _) => write!(f, "Encryption/Decryption Error: {msg}"),
             SnapError::InvalidCompressor(msg) => write!(f, "Compress/Decompress Error: {msg}"),
+            SnapError::InvalidSnapshotLayout(path) => write!(f, "Invalid Snapshot Layout: {:?}", path),
+            SnapError::SerializationError(msg) => write!(f, "Serialization Error: {msg}"),
         }
     }
 }

@@ -3,6 +3,7 @@ pub mod commands;
 pub mod compress;
 pub mod utils;
 pub mod crypto;
+pub mod registry;
 
 #[cfg(test)]
 mod crypto_tests {
@@ -258,5 +259,41 @@ mod password_tests {
         let policy = PasswordPolicy::default();
 
         assert!(Password::new("password".into(), &policy).is_err())
+    }
+}
+
+mod config_tests {
+    use crate::utils::config::{Config, GeneralConfig};
+
+
+    #[test]
+    fn test_config_roundtrip() {
+        let general = GeneralConfig::from(("some/path".into(), "gzip".into(), 3));
+        let original = Config { general };
+
+        let toml = toml::to_string(&original).unwrap();
+        let deserialized: Config = toml::from_str(&toml).unwrap();
+
+        assert_eq!(original, deserialized);
+    }
+}
+
+mod layout_tests {
+    use crate::utils::layout::SnapshotLayout;
+
+    #[test]
+    fn test_layout_initializes_correctly() {
+        let tmp = tempfile::tempdir().unwrap();
+        let layout = SnapshotLayout::initialize(tmp.path()).unwrap();
+        assert!(layout.blobs.exists());
+        assert!(layout.snapshots.exists());
+    }
+
+    #[test]
+    fn test_blob_and_snapshot_path_validates() {
+        let tmp = tempfile::tempdir().unwrap();
+        let layout = SnapshotLayout::initialize(tmp.path()).unwrap();
+
+        assert!(layout.validate().is_ok())
     }
 }
